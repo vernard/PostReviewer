@@ -1,0 +1,2 @@
+- When making new files or folders, make sure it's owned by 33:33 or www-data:www-data. And set the proper permissions
+- Don't use playwright MCP if you can check via curl. Only use playwright when checking things you can't check via curl because it takes up a lot of tokens.

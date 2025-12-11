@@ -1,0 +1,85 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    volumes:
+      - laravel_storage:/var/www/html/storage
+    environment:
+      PHP_OPCACHE_ENABLE: 1
+      BROADCAST_CONNECTION: reverb
+      # Client-side (browser JS) - from Coolify .env
+      REVERB_APP_ID: ${REVERB_APP_ID:-mockup-approver}
+      REVERB_APP_KEY: ${REVERB_APP_KEY:-mockup-approver-key}
+      REVERB_APP_SECRET: ${REVERB_APP_SECRET}
+      REVERB_HOST: ${REVERB_HOST}
+      REVERB_PORT: ${REVERB_PORT:-443}
+      REVERB_SCHEME: ${REVERB_SCHEME:-https}
+      # Server-side (PHP broadcasting) - Docker internal
+      REVERB_SERVER_HOST: reverb
+      REVERB_SERVER_PORT: 8080
+      REVERB_SERVER_SCHEME: http
+    depends_on:
+      - db
+      - reverb
+
+  reverb:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    command: php artisan reverb:start --host=0.0.0.0 --port=8080
+    environment:
+      REVERB_SERVER_HOST: "0.0.0.0"
+      REVERB_SERVER_PORT: 8080
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "reverb:start"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      db:
+        condition: service_healthy
+
+  queue:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+    volumes:
+      - laravel_storage:/var/www/html/storage
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mariadb:10.6
+    command: --wait-timeout=${MYSQL_WAIT_TIMEOUT:-120} --interactive-timeout=${MYSQL_WAIT_TIMEOUT:-120}
+    env_file: ./.env
+    environment:
+      TZ: ${TZ:-Asia/Manila}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE}
+    volumes:
+      - dbdata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+
+  phpmyadmin:
+    image: phpmyadmin
+    environment:
+      PMA_HOST: ${DB_HOST}
+      PMA_USER: ${DB_USERNAME}
+      PMA_PASSWORD: ${DB_PASSWORD}
+
+volumes:
+  dbdata:
+  laravel_storage:
