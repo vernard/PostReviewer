@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import Footer from '@/components/Footer.vue';
 import { useDarkMode } from '@/composables/useDarkMode';
+import html2canvas from 'html2canvas-pro';
 
 const { isDark, toggle: toggleDarkMode } = useDarkMode();
 
@@ -96,6 +97,80 @@ const clearPreview = () => {
     caption.value = '';
     imageDimensions.value = { width: 0, height: 0 };
 };
+
+const mockupRef = ref(null);
+const exporting = ref(false);
+
+// Email subscription
+const subscribeEmail = ref('');
+const subscribing = ref(false);
+const subscribeSuccess = ref(false);
+const subscribeError = ref('');
+
+const subscribeToNewsletter = async () => {
+    if (!subscribeEmail.value || subscribing.value) return;
+
+    subscribing.value = true;
+    subscribeError.value = '';
+
+    try {
+        const response = await fetch(import.meta.env.VITE_EMAILIT_SUBSCRIBE_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email: subscribeEmail.value }),
+        });
+
+        if (response.ok) {
+            subscribeSuccess.value = true;
+            subscribeEmail.value = '';
+        } else {
+            const data = await response.json();
+            subscribeError.value = data.message || 'Failed to subscribe. Please try again.';
+        }
+    } catch (err) {
+        subscribeError.value = 'Failed to subscribe. Please try again.';
+    } finally {
+        subscribing.value = false;
+    }
+};
+
+const exportAsJpeg = async () => {
+    if (exporting.value) return;
+
+    if (!mockupRef.value) {
+        alert('No mockup to export. Please upload an image first.');
+        return;
+    }
+
+    try {
+        exporting.value = true;
+
+        // Wait a tick for Vue to finish any pending updates
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        const canvas = await html2canvas(mockupRef.value, {
+            backgroundColor: '#ffffff',
+            scale: 2,
+            useCORS: true,
+            allowTaint: true,
+            logging: false,
+        });
+
+        const link = document.createElement('a');
+        link.download = `${selectedPlatform.value}-mockup-${Date.now()}.jpg`;
+        link.href = canvas.toDataURL('image/jpeg', 0.95);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    } catch (err) {
+        console.error('Export failed:', err);
+        alert('Failed to export mockup: ' + err.message);
+    } finally {
+        exporting.value = false;
+    }
+};
 </script>
 
 <template>
@@ -134,6 +209,18 @@ const clearPreview = () => {
                 </div>
             </div>
         </nav>
+
+        <!-- Development Notice Banner -->
+        <div class="bg-amber-500 text-amber-950">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+                <div class="flex items-center justify-center gap-2 text-sm font-medium">
+                    <svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                    </svg>
+                    <span>This app is under development. Your account may be reset during this period.</span>
+                </div>
+            </div>
+        </div>
 
         <main class="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
             <div class="text-center">
@@ -298,15 +385,10 @@ const clearPreview = () => {
                     <!-- Preview Section -->
                     <div>
                         <div class="bg-gray-100 dark:bg-gray-700 rounded-lg p-4 min-h-[400px] flex items-center justify-center">
-                            <div v-if="!previewUrl" class="text-center text-gray-500 dark:text-gray-400">
-                                <svg class="mx-auto h-16 w-16 text-gray-300 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                </svg>
-                                <p class="mt-2">Upload media to see preview</p>
-                            </div>
-
+                            <!-- Mockup Container -->
+                            <div ref="mockupRef">
                             <!-- Instagram Mockup -->
-                            <div v-else-if="selectedPlatform === 'instagram'" class="bg-white rounded-lg shadow-lg w-full max-w-[375px]">
+                            <div v-if="selectedPlatform === 'instagram'" class="bg-white rounded-lg shadow-lg w-full max-w-[375px]">
                                 <!-- Header -->
                                 <div class="flex items-center p-3 border-b">
                                     <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-500 p-0.5">
@@ -326,9 +408,18 @@ const clearPreview = () => {
                                     </svg>
                                 </div>
                                 <!-- Image -->
-                                <div class="aspect-square bg-gray-200 overflow-hidden">
-                                    <img v-if="!isVideo" :src="previewUrl" class="w-full h-full object-cover" />
-                                    <video v-else :src="previewUrl" class="w-full h-full object-cover" autoplay muted loop />
+                                <div class="w-full bg-gray-200 overflow-hidden flex items-center justify-center">
+                                    <img v-if="previewUrl && !isVideo" :src="previewUrl" class="w-full h-auto" />
+                                    <video v-else-if="previewUrl && isVideo" :src="previewUrl" class="w-full h-auto" autoplay muted loop />
+                                    <!-- Sample placeholder -->
+                                    <div v-else class="w-full aspect-square bg-gradient-to-br from-pink-400 via-purple-400 to-indigo-400 flex items-center justify-center">
+                                        <div class="text-center text-white">
+                                            <svg class="mx-auto h-16 w-16 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                            <p class="mt-2 text-sm font-medium opacity-90">Your image here</p>
+                                        </div>
+                                    </div>
                                 </div>
                                 <!-- Actions -->
                                 <div class="p-3">
@@ -348,8 +439,7 @@ const clearPreview = () => {
                                     </div>
                                     <p class="text-sm font-semibold mt-2">1,234 likes</p>
                                     <p class="text-sm mt-1">
-                                        <span class="font-semibold">{{ displayBrandName }}</span>
-                                        <span class="whitespace-pre-wrap">{{ truncatedCaption }}</span>
+                                        <span class="font-semibold">{{ displayBrandName }}</span>{{ ' ' }}<span class="whitespace-pre-wrap">{{ truncatedCaption }}</span>
                                         <button
                                             v-if="isCaptionLong && !captionExpanded"
                                             @click="toggleCaption"
@@ -369,9 +459,10 @@ const clearPreview = () => {
                             <div v-else class="bg-white rounded-lg shadow-lg w-full max-w-[500px]">
                                 <!-- Header -->
                                 <div class="flex items-center p-3">
-                                    <div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center overflow-hidden">
+                                    <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center overflow-hidden relative">
                                         <img v-if="brandLogoUrl" :src="brandLogoUrl" class="w-full h-full object-cover" />
-                                        <span v-else class="text-white font-bold">{{ brandInitials }}</span>
+                                        <div v-if="brandLogoUrl" class="absolute inset-0 rounded-full" style="box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1)"></div>
+                                        <span v-else class="text-white font-bold bg-blue-600 w-full h-full flex items-center justify-center">{{ brandInitials }}</span>
                                     </div>
                                     <div class="ml-3">
                                         <p class="text-sm font-semibold text-gray-900">{{ displayBrandNameFb }}</p>
@@ -405,20 +496,30 @@ const clearPreview = () => {
                                 </p>
                                 <!-- Image -->
                                 <div
-                                    class="flex items-center justify-center"
-                                    :class="isVertical ? 'bg-black' : 'bg-gray-200'"
+                                    class="w-full aspect-square flex items-center justify-center bg-black"
                                 >
-                                    <img
-                                        v-if="!isVideo"
-                                        :src="previewUrl"
-                                        :class="isVertical ? 'max-h-[500px] w-auto' : 'w-full'"
-                                    />
-                                    <video
-                                        v-else
-                                        :src="previewUrl"
-                                        :class="isVertical ? 'max-h-[500px] w-auto' : 'w-full'"
-                                        controls
-                                    />
+                                    <template v-if="previewUrl">
+                                        <img
+                                            v-if="!isVideo"
+                                            :src="previewUrl"
+                                            class="max-h-full max-w-full object-contain"
+                                        />
+                                        <video
+                                            v-else
+                                            :src="previewUrl"
+                                            class="max-h-full max-w-full object-contain"
+                                            controls
+                                        />
+                                    </template>
+                                    <!-- Sample placeholder -->
+                                    <div v-else class="w-full h-full bg-gradient-to-br from-blue-400 via-blue-500 to-indigo-500 flex items-center justify-center">
+                                        <div class="text-center text-white">
+                                            <svg class="mx-auto h-16 w-16 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                            <p class="mt-2 text-sm font-medium opacity-90">Your image here</p>
+                                        </div>
+                                    </div>
                                 </div>
                                 <!-- Stats -->
                                 <div class="px-3 py-2 flex items-center justify-between text-sm text-gray-500 border-b">
@@ -461,8 +562,28 @@ const clearPreview = () => {
                                     </button>
                                 </div>
                             </div>
+                            </div>
+
                         </div>
                     </div>
+                </div>
+
+                <!-- Export Button -->
+                <div v-if="previewUrl" class="mt-6 text-center">
+                    <button
+                        @click="exportAsJpeg"
+                        :disabled="exporting"
+                        class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <svg v-if="!exporting" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        <svg v-else class="w-5 h-5 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        {{ exporting ? 'Exporting...' : 'Export as JPEG' }}
+                    </button>
                 </div>
 
                 <div class="mt-8 text-center">
@@ -473,6 +594,36 @@ const clearPreview = () => {
                     >
                         Create Free Account
                     </RouterLink>
+                </div>
+
+                <!-- Email Subscription Section -->
+                <div class="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
+                    <div class="text-center">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Get Notified When We Launch</h3>
+                        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                            We're still in beta. Subscribe to be notified when we're fully live.
+                        </p>
+                        <div v-if="!subscribeSuccess" class="mt-4 flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto">
+                            <input
+                                v-model="subscribeEmail"
+                                type="email"
+                                placeholder="Enter your email"
+                                class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                                @keyup.enter="subscribeToNewsletter"
+                            />
+                            <button
+                                @click="subscribeToNewsletter"
+                                :disabled="subscribing || !subscribeEmail"
+                                class="px-6 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                            >
+                                {{ subscribing ? 'Subscribing...' : 'Notify Me' }}
+                            </button>
+                        </div>
+                        <p v-if="subscribeError" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ subscribeError }}</p>
+                        <p v-if="subscribeSuccess" class="mt-4 text-sm text-green-600 dark:text-green-400 font-medium">
+                            Thanks! We'll notify you when we launch.
+                        </p>
+                    </div>
                 </div>
             </div>
 

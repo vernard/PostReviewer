@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <defs>
+    <linearGradient id="love-grad" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#FF6680"/>
+      <stop offset="100%" stop-color="#E6003A"/>
+    </linearGradient>
+  </defs>
+  <circle cx="24" cy="24" r="24" fill="url(#love-grad)"/>
+  <path d="M24 38.5c-.5 0-1-.2-1.4-.5C21.3 37 12 29.5 12 21.5c0-4.4 3.6-8 8-8 2.2 0 4.2 1.1 5.5 2.8L24 14.5l-1.5 1.8c1.3-1.7 3.3-2.8 5.5-2.8 4.4 0 8 3.6 8 8 0 8-9.3 15.5-10.6 16.5-.4.3-.9.5-1.4.5z" fill="#fff"/>
+</svg>

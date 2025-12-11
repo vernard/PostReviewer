@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Agency;
+use App\Models\Brand;
 use App\Models\Invitation;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -21,6 +22,7 @@ class AuthController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'agency_name' => ['required', 'string', 'max:255'],
             'password' => ['required', 'confirmed', Password::defaults()],
+            'logo' => ['nullable', 'image', 'max:2048'],
         ]);
 
         // Create agency
@@ -36,6 +38,18 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
             'role' => 'admin',
         ]);
+
+        // Create the first brand for the agency
+        $brand = Brand::create([
+            'agency_id' => $agency->id,
+            'name' => $request->agency_name,
+            'logo' => $request->hasFile('logo')
+                ? $request->file('logo')->store('brands', 'public')
+                : null,
+        ]);
+
+        // Attach user to the brand
+        $brand->users()->attach($user->id);
 
         $token = $user->createToken('auth-token')->plainTextToken;
 
@@ -69,7 +83,20 @@ class AuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
-        $request->user()->currentAccessToken()->delete();
+        $token = $request->user()->currentAccessToken();
+
+        // Only delete if it's a real PersonalAccessToken (API token auth)
+        // TransientToken is used for SPA/cookie auth and doesn't need deletion
+        if ($token instanceof \Laravel\Sanctum\PersonalAccessToken) {
+            $token->delete();
+        }
+
+        // For SPA authentication, also clear the session if available
+        if ($request->hasSession()) {
+            Auth::guard('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
 
         return response()->json([
             'message' => 'Logged out successfully',

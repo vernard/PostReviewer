@@ -23,7 +23,10 @@ const saving = ref(false);
 const editForm = ref({
     name: '',
     description: '',
+    logo: null,
 });
+const logoPreview = ref(null);
+const logoInput = ref(null);
 
 const selectedUserId = ref('');
 
@@ -40,7 +43,7 @@ const fetchBrand = async () => {
     try {
         loading.value = true;
         const response = await brandApi.get(brandId);
-        brand.value = response.data.data || response.data;
+        brand.value = response.data.brand || response.data.data || response.data;
         editForm.value = {
             name: brand.value.name,
             description: brand.value.description || '',
@@ -78,6 +81,14 @@ const fetchUsers = async () => {
     }
 };
 
+const handleLogoChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+        editForm.value.logo = file;
+        logoPreview.value = URL.createObjectURL(file);
+    }
+};
+
 const updateBrand = async () => {
     if (!editForm.value.name.trim()) {
         return;
@@ -85,10 +96,22 @@ const updateBrand = async () => {
 
     try {
         saving.value = true;
-        await brandApi.update(brandId, editForm.value);
-        brand.value.name = editForm.value.name;
-        brand.value.description = editForm.value.description;
+
+        const formData = new FormData();
+        formData.append('name', editForm.value.name);
+        formData.append('description', editForm.value.description || '');
+        if (editForm.value.logo) {
+            formData.append('logo', editForm.value.logo);
+        }
+
+        const response = await brandApi.updateWithLogo(brandId, formData);
+        const updatedBrand = response.data.brand || response.data;
+        brand.value.name = updatedBrand.name;
+        brand.value.description = updatedBrand.description;
+        brand.value.logo_url = updatedBrand.logo_url;
         showEditModal.value = false;
+        editForm.value.logo = null;
+        logoPreview.value = null;
     } catch (err) {
         error.value = err.response?.data?.message || 'Failed to update brand';
     } finally {
@@ -142,13 +165,13 @@ const removeUser = async (userId) => {
 
 const getStatusColor = (status) => {
     const colors = {
-        draft: 'bg-gray-100 text-gray-700',
-        pending_approval: 'bg-yellow-100 text-yellow-700',
-        changes_requested: 'bg-red-100 text-red-700',
-        approved: 'bg-green-100 text-green-700',
-        published: 'bg-blue-100 text-blue-700',
+        draft: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+        pending_approval: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+        changes_requested: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+        approved: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+        published: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
     };
-    return colors[status] || 'bg-gray-100 text-gray-700';
+    return colors[status] || 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
 };
 
 const formatStatus = (status) => {
@@ -167,12 +190,12 @@ onMounted(async () => {
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <!-- Loading State -->
                 <div v-if="loading" class="animate-pulse">
-                    <div class="h-8 bg-gray-200 rounded w-48 mb-4"></div>
-                    <div class="h-4 bg-gray-200 rounded w-96"></div>
+                    <div class="h-8 bg-gray-200 dark:bg-gray-700 rounded w-48 mb-4"></div>
+                    <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-96"></div>
                 </div>
 
                 <!-- Error State -->
-                <div v-else-if="error" class="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
+                <div v-else-if="error" class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded">
                     {{ error }}
                     <RouterLink to="/brands" class="ml-4 underline">Back to brands</RouterLink>
                 </div>
@@ -181,40 +204,40 @@ onMounted(async () => {
                 <div v-else>
                     <div class="flex items-center justify-between">
                         <div class="flex items-center">
-                            <RouterLink to="/brands" class="text-gray-400 hover:text-gray-600 mr-4">
+                            <RouterLink to="/brands" class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 mr-4">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                                 </svg>
                             </RouterLink>
                             <div
-                                v-if="brand?.logo"
+                                v-if="brand?.logo_url"
                                 class="w-16 h-16 rounded-full overflow-hidden flex-shrink-0"
                             >
-                                <img :src="brand.logo" :alt="brand.name" class="w-full h-full object-cover" />
+                                <img :src="brand.logo_url" :alt="brand.name" class="w-full h-full object-cover" />
                             </div>
                             <div
                                 v-else
-                                class="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0"
+                                class="w-16 h-16 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0"
                             >
-                                <span class="text-indigo-600 font-semibold text-2xl">
+                                <span class="text-primary-600 dark:text-primary-400 font-semibold text-2xl">
                                     {{ brand?.name?.charAt(0)?.toUpperCase() }}
                                 </span>
                             </div>
                             <div class="ml-4">
-                                <h1 class="text-2xl font-semibold text-gray-900">{{ brand?.name }}</h1>
-                                <p class="text-gray-500">{{ brand?.description || 'No description' }}</p>
+                                <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">{{ brand?.name }}</h1>
+                                <p class="text-gray-500 dark:text-gray-400">{{ brand?.description || 'No description' }}</p>
                             </div>
                         </div>
                         <div v-if="canManage" class="flex items-center gap-2">
                             <button
                                 @click="showEditModal = true"
-                                class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                                class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                             >
                                 Edit
                             </button>
                             <button
                                 @click="deleteBrand"
-                                class="px-4 py-2 border border-red-300 rounded-md text-red-600 hover:bg-red-50"
+                                class="px-4 py-2 border border-red-300 dark:border-red-800 rounded-md text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30"
                             >
                                 Delete
                             </button>
@@ -223,17 +246,17 @@ onMounted(async () => {
 
                     <!-- Stats -->
                     <div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-                        <div class="bg-white shadow rounded-lg p-4">
-                            <dt class="text-sm font-medium text-gray-500">Total Posts</dt>
-                            <dd class="mt-1 text-2xl font-semibold text-gray-900">{{ brand?.posts_count || 0 }}</dd>
+                        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-4">
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Posts</dt>
+                            <dd class="mt-1 text-2xl font-semibold text-gray-900 dark:text-white">{{ brand?.posts_count || 0 }}</dd>
                         </div>
-                        <div class="bg-white shadow rounded-lg p-4">
-                            <dt class="text-sm font-medium text-gray-500">Team Members</dt>
-                            <dd class="mt-1 text-2xl font-semibold text-gray-900">{{ brand?.users_count || users.length }}</dd>
+                        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-4">
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Team Members</dt>
+                            <dd class="mt-1 text-2xl font-semibold text-gray-900 dark:text-white">{{ brand?.users_count || users.length }}</dd>
                         </div>
-                        <div class="bg-white shadow rounded-lg p-4">
-                            <dt class="text-sm font-medium text-gray-500">Media Files</dt>
-                            <dd class="mt-1 text-2xl font-semibold text-gray-900">{{ brand?.media_count || 0 }}</dd>
+                        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-4">
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Media Files</dt>
+                            <dd class="mt-1 text-2xl font-semibold text-gray-900 dark:text-white">{{ brand?.media_count || 0 }}</dd>
                         </div>
                     </div>
 
@@ -241,26 +264,26 @@ onMounted(async () => {
                     <div class="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
                         <!-- Recent Posts -->
                         <div class="lg:col-span-2">
-                            <div class="bg-white shadow rounded-lg">
-                                <div class="px-4 py-5 sm:px-6 flex justify-between items-center border-b border-gray-200">
-                                    <h3 class="text-lg font-medium text-gray-900">Recent Posts</h3>
+                            <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+                                <div class="px-4 py-5 sm:px-6 flex justify-between items-center border-b border-gray-200 dark:border-gray-600">
+                                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">Recent Posts</h3>
                                     <RouterLink
                                         :to="`/posts/create?brand_id=${brandId}`"
-                                        class="text-sm font-medium text-indigo-600 hover:text-indigo-500"
+                                        class="text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-500"
                                     >
                                         Create Post
                                     </RouterLink>
                                 </div>
-                                <div v-if="posts.length === 0" class="p-6 text-center text-gray-500">
+                                <div v-if="posts.length === 0" class="p-6 text-center text-gray-500 dark:text-gray-400">
                                     No posts yet. Create your first post!
                                 </div>
-                                <ul v-else class="divide-y divide-gray-200">
+                                <ul v-else class="divide-y divide-gray-200 dark:divide-gray-600">
                                     <li v-for="post in posts" :key="post.id">
-                                        <RouterLink :to="`/posts/${post.id}`" class="block hover:bg-gray-50 px-4 py-4">
+                                        <RouterLink :to="`/posts/${post.id}`" class="block hover:bg-gray-50 dark:hover:bg-gray-700 px-4 py-4">
                                             <div class="flex items-center justify-between">
                                                 <div class="flex-1 min-w-0">
-                                                    <p class="text-sm font-medium text-gray-900 truncate">{{ post.title }}</p>
-                                                    <p class="text-sm text-gray-500 truncate">
+                                                    <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ post.title }}</p>
+                                                    <p class="text-sm text-gray-500 dark:text-gray-400 truncate">
                                                         {{ post.platforms?.join(', ') || 'No platforms' }}
                                                     </p>
                                                 </div>
@@ -273,10 +296,10 @@ onMounted(async () => {
                                         </RouterLink>
                                     </li>
                                 </ul>
-                                <div v-if="posts.length > 0" class="px-4 py-3 bg-gray-50 text-right border-t border-gray-200">
+                                <div v-if="posts.length > 0" class="px-4 py-3 bg-gray-50 dark:bg-gray-700 text-right border-t border-gray-200 dark:border-gray-600">
                                     <RouterLink
                                         :to="`/posts?brand_id=${brandId}`"
-                                        class="text-sm font-medium text-indigo-600 hover:text-indigo-500"
+                                        class="text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-500"
                                     >
                                         View all posts &rarr;
                                     </RouterLink>
@@ -286,21 +309,21 @@ onMounted(async () => {
 
                         <!-- Team Members -->
                         <div>
-                            <div class="bg-white shadow rounded-lg">
-                                <div class="px-4 py-5 sm:px-6 flex justify-between items-center border-b border-gray-200">
-                                    <h3 class="text-lg font-medium text-gray-900">Team Members</h3>
+                            <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+                                <div class="px-4 py-5 sm:px-6 flex justify-between items-center border-b border-gray-200 dark:border-gray-600">
+                                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">Team Members</h3>
                                     <button
                                         v-if="canManage"
                                         @click="showAddUserModal = true"
-                                        class="text-sm font-medium text-indigo-600 hover:text-indigo-500"
+                                        class="text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-500"
                                     >
                                         Add Member
                                     </button>
                                 </div>
-                                <div v-if="users.length === 0" class="p-6 text-center text-gray-500">
+                                <div v-if="users.length === 0" class="p-6 text-center text-gray-500 dark:text-gray-400">
                                     No team members assigned.
                                 </div>
-                                <ul v-else class="divide-y divide-gray-200">
+                                <ul v-else class="divide-y divide-gray-200 dark:divide-gray-600">
                                     <li v-for="user in users" :key="user.id" class="px-4 py-3 flex items-center justify-between">
                                         <div class="flex items-center">
                                             <div
@@ -311,21 +334,21 @@ onMounted(async () => {
                                             </div>
                                             <div
                                                 v-else
-                                                class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center"
+                                                class="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center"
                                             >
-                                                <span class="text-gray-600 text-sm font-medium">
+                                                <span class="text-gray-600 dark:text-gray-400 text-sm font-medium">
                                                     {{ user.name?.charAt(0)?.toUpperCase() }}
                                                 </span>
                                             </div>
                                             <div class="ml-3">
-                                                <p class="text-sm font-medium text-gray-900">{{ user.name }}</p>
-                                                <p class="text-xs text-gray-500">{{ user.role }}</p>
+                                                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ user.name }}</p>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ user.role }}</p>
                                             </div>
                                         </div>
                                         <button
                                             v-if="canManage && user.id !== authStore.user?.id"
                                             @click="removeUser(user.id)"
-                                            class="text-red-600 hover:text-red-800"
+                                            class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
                                         >
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -345,26 +368,60 @@ onMounted(async () => {
             <div class="flex items-center justify-center min-h-screen px-4">
                 <div class="fixed inset-0 bg-gray-500 bg-opacity-75" @click="showEditModal = false"></div>
 
-                <div class="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">Edit Brand</h3>
+                <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Edit Brand</h3>
 
                     <form @submit.prevent="updateBrand">
                         <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Brand Name</label>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Brand Logo</label>
+                            <div class="flex items-center gap-4">
+                                <div
+                                    v-if="logoPreview || brand?.logo_url"
+                                    class="w-16 h-16 rounded-full overflow-hidden flex-shrink-0"
+                                >
+                                    <img :src="logoPreview || brand?.logo_url" alt="Logo preview" class="w-full h-full object-cover" />
+                                </div>
+                                <div
+                                    v-else
+                                    class="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center flex-shrink-0"
+                                >
+                                    <span class="text-gray-400 text-2xl">{{ editForm.name?.charAt(0)?.toUpperCase() || '?' }}</span>
+                                </div>
+                                <div>
+                                    <input
+                                        ref="logoInput"
+                                        type="file"
+                                        accept="image/*"
+                                        class="hidden"
+                                        @change="handleLogoChange"
+                                    />
+                                    <button
+                                        type="button"
+                                        @click="logoInput.click()"
+                                        class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                                    >
+                                        Change Logo
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Brand Name</label>
                             <input
                                 v-model="editForm.name"
                                 type="text"
                                 required
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                             />
                         </div>
 
                         <div class="mb-6">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
                             <textarea
                                 v-model="editForm.description"
                                 rows="3"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                             ></textarea>
                         </div>
 
@@ -372,14 +429,14 @@ onMounted(async () => {
                             <button
                                 type="button"
                                 @click="showEditModal = false"
-                                class="px-4 py-2 text-gray-700 hover:text-gray-900"
+                                class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
                             >
                                 Cancel
                             </button>
                             <button
                                 type="submit"
                                 :disabled="saving"
-                                class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 disabled:opacity-50"
+                                class="bg-primary-600 dark:bg-primary-500 text-white px-4 py-2 rounded-md hover:bg-primary-700 dark:hover:bg-primary-600 disabled:opacity-50"
                             >
                                 {{ saving ? 'Saving...' : 'Save Changes' }}
                             </button>
@@ -394,19 +451,19 @@ onMounted(async () => {
             <div class="flex items-center justify-center min-h-screen px-4">
                 <div class="fixed inset-0 bg-gray-500 bg-opacity-75" @click="showAddUserModal = false"></div>
 
-                <div class="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">Add Team Member</h3>
+                <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Add Team Member</h3>
 
-                    <div v-if="availableUsers.length === 0" class="text-gray-500 text-center py-4">
+                    <div v-if="availableUsers.length === 0" class="text-gray-500 dark:text-gray-400 text-center py-4">
                         No available users to add. All team members are already assigned.
                     </div>
                     <form v-else @submit.prevent="addUser">
                         <div class="mb-6">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Select User</label>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select User</label>
                             <select
                                 v-model="selectedUserId"
                                 required
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                             >
                                 <option value="">Choose a user...</option>
                                 <option v-for="user in availableUsers" :key="user.id" :value="user.id">
@@ -419,14 +476,14 @@ onMounted(async () => {
                             <button
                                 type="button"
                                 @click="showAddUserModal = false"
-                                class="px-4 py-2 text-gray-700 hover:text-gray-900"
+                                class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
                             >
                                 Cancel
                             </button>
                             <button
                                 type="submit"
                                 :disabled="saving || !selectedUserId"
-                                class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 disabled:opacity-50"
+                                class="bg-primary-600 dark:bg-primary-500 text-white px-4 py-2 rounded-md hover:bg-primary-700 dark:hover:bg-primary-600 disabled:opacity-50"
                             >
                                 {{ saving ? 'Adding...' : 'Add Member' }}
                             </button>

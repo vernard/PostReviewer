@@ -34,6 +34,10 @@ const getUserInitials = () => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 };
 
+const toggleUserMenu = () => {
+    userMenuOpen.value = !userMenuOpen.value;
+};
+
 const logout = async () => {
     await authStore.logout();
 };
@@ -73,7 +77,7 @@ const logout = async () => {
                     </button>
                     <!-- User avatar (mobile) -->
                     <button
-                        @click="userMenuOpen = !userMenuOpen"
+                        @click="toggleUserMenu"
                         class="flex text-sm bg-gray-800 rounded-full focus:ring-4 focus:ring-gray-300 dark:focus:ring-gray-600"
                     >
                         <span class="sr-only">Open user menu</span>
@@ -195,7 +199,7 @@ const logout = async () => {
         <!-- Main content area -->
         <div class="lg:ml-64">
             <!-- Top bar (desktop) -->
-            <header class="hidden lg:flex sticky top-0 z-30 h-16 bg-white border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+            <header class="hidden lg:flex fixed top-0 right-0 left-64 z-40 h-16 bg-white border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700">
                 <div class="flex flex-1 justify-end items-center px-4">
                     <!-- Notifications -->
                     <button class="p-2 mr-2 text-gray-500 rounded-lg hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-700 focus:ring-4 focus:ring-gray-300 dark:focus:ring-gray-600">
@@ -206,10 +210,10 @@ const logout = async () => {
                     </button>
 
                     <!-- User menu -->
-                    <div class="relative">
+                    <div class="relative z-50">
                         <button
-                            @click="userMenuOpen = !userMenuOpen"
-                            class="flex items-center space-x-3 text-sm rounded-full focus:ring-4 focus:ring-gray-300 dark:focus:ring-gray-600"
+                            @click="toggleUserMenu"
+                            class="flex items-center space-x-3 text-sm rounded-full focus:ring-4 focus:ring-gray-300 dark:focus:ring-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 p-2 -m-2"
                         >
                             <div class="w-8 h-8 rounded-full bg-primary-600 flex items-center justify-center text-white text-sm font-medium">
                                 {{ getUserInitials() }}
@@ -219,84 +223,64 @@ const logout = async () => {
                                 <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
                             </svg>
                         </button>
-
-                        <!-- Dropdown -->
-                        <div
-                            v-if="userMenuOpen"
-                            class="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg dark:bg-gray-700 divide-y divide-gray-100 dark:divide-gray-600 z-50"
-                        >
-                            <div class="px-4 py-3">
-                                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ authStore.user?.name }}</p>
-                                <p class="text-sm text-gray-500 dark:text-gray-400 truncate">{{ authStore.user?.email }}</p>
-                            </div>
-                            <ul class="py-1">
-                                <li>
-                                    <RouterLink
-                                        to="/settings"
-                                        class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:text-white"
-                                        @click="userMenuOpen = false"
-                                    >
-                                        Settings
-                                    </RouterLink>
-                                </li>
-                            </ul>
-                            <div class="py-1">
-                                <button
-                                    @click="logout"
-                                    class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:text-white"
-                                >
-                                    Sign out
-                                </button>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </header>
 
+            <!-- Development Notice Banner -->
+            <div class="bg-amber-500 text-amber-950">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+                    <div class="flex items-center justify-center gap-2 text-sm font-medium">
+                        <svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>
+                        <span>This app is under development. Your account may be reset during this period.</span>
+                    </div>
+                </div>
+            </div>
+
             <!-- Page content -->
-            <main class="p-4 pt-20 lg:pt-4 min-h-screen dark:bg-gray-900">
+            <main class="p-4 pt-20 lg:pt-20 min-h-screen dark:bg-gray-900">
                 <slot />
             </main>
         </div>
 
-        <!-- User menu dropdown (mobile) -->
-        <div
-            v-if="userMenuOpen"
-            class="lg:hidden fixed inset-0 z-50"
-            @click="userMenuOpen = false"
-        >
-            <div class="absolute top-14 right-4 w-56 bg-white rounded-lg shadow-lg dark:bg-gray-700 divide-y divide-gray-100 dark:divide-gray-600">
-                <div class="px-4 py-3">
-                    <p class="text-sm font-medium text-gray-900 dark:text-white">{{ authStore.user?.name }}</p>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 truncate">{{ authStore.user?.email }}</p>
-                </div>
-                <ul class="py-1">
-                    <li>
-                        <RouterLink
-                            to="/settings"
-                            class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:text-white"
-                            @click="userMenuOpen = false"
+        <!-- User menu dropdown (unified) -->
+        <Teleport to="body">
+            <div
+                v-if="userMenuOpen"
+                class="fixed inset-0 z-[60]"
+                @click="userMenuOpen = false"
+            >
+                <div
+                    @click.stop
+                    class="absolute right-4 top-14 lg:top-16 w-56 bg-white rounded-lg shadow-lg dark:bg-gray-700 divide-y divide-gray-100 dark:divide-gray-600"
+                >
+                    <div class="px-4 py-3">
+                        <p class="text-sm font-medium text-gray-900 dark:text-white">{{ authStore.user?.name }}</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 truncate">{{ authStore.user?.email }}</p>
+                    </div>
+                    <ul class="py-1">
+                        <li>
+                            <RouterLink
+                                to="/settings"
+                                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:text-white"
+                                @click="userMenuOpen = false"
+                            >
+                                Settings
+                            </RouterLink>
+                        </li>
+                    </ul>
+                    <div class="py-1">
+                        <button
+                            @click="logout"
+                            class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:text-white"
                         >
-                            Settings
-                        </RouterLink>
-                    </li>
-                </ul>
-                <div class="py-1">
-                    <button
-                        @click="logout"
-                        class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-600 dark:hover:text-white"
-                    >
-                        Sign out
-                    </button>
+                            Sign out
+                        </button>
+                    </div>
                 </div>
             </div>
-        </div>
-
-        <!-- Click outside backdrop for desktop dropdown -->
-        <div
-            v-if="userMenuOpen"
-            class="hidden lg:block fixed inset-0 z-40"
-            @click="userMenuOpen = false"
-        />
+        </Teleport>
     </div>
 </template>

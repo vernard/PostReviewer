@@ -80,7 +80,7 @@ const fetchPost = async () => {
 const fetchBrands = async () => {
     try {
         const response = await brandApi.list();
-        brands.value = response.data.data || response.data;
+        brands.value = response.data.brands || response.data.data || response.data;
     } catch (err) {
         console.error('Failed to fetch brands:', err);
     }
@@ -154,44 +154,44 @@ onMounted(async () => {
         <div class="py-6">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex items-center gap-4">
-                    <RouterLink :to="`/posts/${postId}`" class="text-gray-400 hover:text-gray-600">
+                    <RouterLink :to="`/posts/${postId}`" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                         </svg>
                     </RouterLink>
-                    <h1 class="text-2xl font-semibold text-gray-900">Edit Post</h1>
+                    <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Edit Post</h1>
                 </div>
             </div>
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
                 <!-- Loading -->
-                <div v-if="loading" class="bg-white shadow rounded-lg p-6 text-center text-gray-500">
+                <div v-if="loading" class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 text-center text-gray-500 dark:text-gray-400">
                     Loading post...
                 </div>
 
                 <!-- Error -->
-                <div v-else-if="error && !post" class="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
+                <div v-else-if="error && !post" class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded">
                     {{ error }}
                     <RouterLink to="/posts" class="ml-4 underline">Back to posts</RouterLink>
                 </div>
 
                 <div v-else>
-                    <div v-if="error" class="mb-6 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
+                    <div v-if="error" class="mb-6 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded">
                         {{ error }}
                     </div>
 
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <!-- Form -->
                         <div class="space-y-6">
-                            <div class="bg-white shadow rounded-lg p-6">
-                                <h2 class="text-lg font-medium text-gray-900 mb-4">Post Details</h2>
+                            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+                                <h2 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Post Details</h2>
                                 <div class="space-y-4">
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700">Brand *</label>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-400">Brand *</label>
                                         <select
                                             v-model="form.brand_id"
                                             @change="fetchBrandMedia(); selectedMedia = []"
                                             required
-                                            class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                                            class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
                                         >
                                             <option value="">Select a brand</option>
                                             <option v-for="brand in brands" :key="brand.id" :value="brand.id">
@@ -201,29 +201,29 @@ onMounted(async () => {
                                     </div>
 
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700">Title (internal) *</label>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-400">Title (internal) *</label>
                                         <input
                                             v-model="form.title"
                                             type="text"
                                             required
-                                            class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                                            class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
                                             placeholder="e.g., December Promo Post"
                                         />
                                     </div>
 
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700">Caption</label>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-400">Caption</label>
                                         <textarea
                                             v-model="form.caption"
                                             rows="4"
-                                            class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                                            class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
                                             placeholder="Write your post caption here..."
                                         />
-                                        <p class="mt-1 text-xs text-gray-500">{{ form.caption.length }} characters</p>
+                                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ form.caption.length }} characters</p>
                                     </div>
 
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Platforms *</label>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-2">Platforms *</label>
                                         <div class="grid grid-cols-2 gap-2">
                                             <label
                                                 v-for="platform in platforms"
@@ -231,8 +231,8 @@ onMounted(async () => {
                                                 :class="[
                                                     'flex items-center p-3 border rounded-lg cursor-pointer transition-colors',
                                                     form.platforms.includes(platform.id)
-                                                        ? 'border-indigo-500 bg-indigo-50'
-                                                        : 'border-gray-200 hover:border-gray-300'
+                                                        ? 'border-primary-500 dark:border-primary-400 bg-primary-50 dark:bg-primary-900/30'
+                                                        : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
                                                 ]"
                                             >
                                                 <input
@@ -249,7 +249,7 @@ onMounted(async () => {
                                                 >
                                                     {{ platform.icon }}
                                                 </span>
-                                                <span class="text-sm text-gray-700">{{ platform.name }}</span>
+                                                <span class="text-sm text-gray-700 dark:text-gray-400">{{ platform.name }}</span>
                                             </label>
                                         </div>
                                     </div>
@@ -257,30 +257,30 @@ onMounted(async () => {
                             </div>
 
                             <!-- Media Section -->
-                            <div class="bg-white shadow rounded-lg p-6">
+                            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
                                 <div class="flex justify-between items-center mb-4">
-                                    <h2 class="text-lg font-medium text-gray-900">Media</h2>
+                                    <h2 class="text-lg font-medium text-gray-900 dark:text-white">Media</h2>
                                     <button
                                         v-if="form.brand_id"
                                         @click="showMediaLibrary = true"
-                                        class="text-sm text-indigo-600 hover:text-indigo-800"
+                                        class="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300"
                                     >
                                         Browse Library
                                     </button>
                                 </div>
 
-                                <div v-if="!form.brand_id" class="text-center text-gray-500 py-8">
+                                <div v-if="!form.brand_id" class="text-center text-gray-500 dark:text-gray-400 py-8">
                                     Select a brand first to add media
                                 </div>
 
-                                <div v-else-if="selectedMedia.length === 0" class="text-center text-gray-500 py-8">
+                                <div v-else-if="selectedMedia.length === 0" class="text-center text-gray-500 dark:text-gray-400 py-8">
                                     <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                     </svg>
                                     <p class="mt-2">No media selected</p>
                                     <button
                                         @click="showMediaLibrary = true"
-                                        class="mt-2 text-indigo-600 hover:text-indigo-800"
+                                        class="mt-2 text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300"
                                     >
                                         Browse media library
                                     </button>
@@ -321,14 +321,14 @@ onMounted(async () => {
                             <div class="flex justify-end gap-3">
                                 <RouterLink
                                     :to="`/posts/${postId}`"
-                                    class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                                    class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
                                 >
                                     Cancel
                                 </RouterLink>
                                 <button
                                     @click="savePost"
                                     :disabled="!canSubmit || saving"
-                                    class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"
+                                    class="px-4 py-2 bg-primary-600 dark:bg-primary-500 text-white rounded-md hover:bg-primary-700 dark:hover:bg-primary-600 disabled:opacity-50"
                                 >
                                     {{ saving ? 'Saving...' : 'Save Changes' }}
                                 </button>
@@ -336,9 +336,9 @@ onMounted(async () => {
                         </div>
 
                         <!-- Preview -->
-                        <div class="bg-white shadow rounded-lg p-6">
+                        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
                             <div class="flex justify-between items-center mb-4">
-                                <h2 class="text-lg font-medium text-gray-900">Preview</h2>
+                                <h2 class="text-lg font-medium text-gray-900 dark:text-white">Preview</h2>
                                 <div v-if="form.platforms.length > 0" class="flex gap-2">
                                     <button
                                         v-for="platform in form.platforms"
@@ -347,8 +347,8 @@ onMounted(async () => {
                                         :class="[
                                             'px-3 py-1 text-xs rounded-full',
                                             previewPlatform === platform || (!previewPlatform && form.platforms[0] === platform)
-                                                ? 'bg-indigo-100 text-indigo-700'
-                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                                ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
+                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
                                         ]"
                                     >
                                         {{ platform.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase()) }}
@@ -356,24 +356,24 @@ onMounted(async () => {
                                 </div>
                             </div>
 
-                            <div v-if="form.platforms.length === 0" class="text-center text-gray-500 py-12">
+                            <div v-if="form.platforms.length === 0" class="text-center text-gray-500 dark:text-gray-400 py-12">
                                 Select a platform to see the mockup preview
                             </div>
 
                             <!-- Instagram Feed Preview -->
                             <div
                                 v-else-if="(previewPlatform || form.platforms[0]).includes('instagram_feed')"
-                                class="max-w-sm mx-auto bg-white border border-gray-200 rounded-lg overflow-hidden"
+                                class="max-w-sm mx-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden"
                             >
                                 <div class="flex items-center p-3">
                                     <div class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
                                         {{ selectedBrand?.name?.charAt(0) || 'B' }}
                                     </div>
                                     <div class="ml-3">
-                                        <p class="text-sm font-semibold">{{ selectedBrand?.name || 'Brand Name' }}</p>
+                                        <p class="text-sm font-semibold dark:text-white">{{ selectedBrand?.name || 'Brand Name' }}</p>
                                     </div>
                                 </div>
-                                <div class="aspect-square bg-gray-100">
+                                <div class="aspect-square bg-gray-100 dark:bg-gray-700">
                                     <img
                                         v-if="selectedMedia[0]"
                                         :src="selectedMedia[0].url"
@@ -384,8 +384,8 @@ onMounted(async () => {
                                     </div>
                                 </div>
                                 <div class="p-3">
-                                    <p class="text-sm">
-                                        <span class="font-semibold">{{ selectedBrand?.name || 'brand' }}</span>
+                                    <p class="text-sm dark:text-gray-300">
+                                        <span class="font-semibold dark:text-white">{{ selectedBrand?.name || 'brand' }}</span>
                                         <span class="whitespace-pre-wrap">{{ truncatedCaption || ' Your caption here...' }}</span>
                                     </p>
                                 </div>
@@ -394,21 +394,21 @@ onMounted(async () => {
                             <!-- Facebook Feed Preview -->
                             <div
                                 v-else-if="(previewPlatform || form.platforms[0]).includes('facebook_feed')"
-                                class="max-w-sm mx-auto bg-white border border-gray-200 rounded-lg overflow-hidden"
+                                class="max-w-sm mx-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden"
                             >
                                 <div class="flex items-center p-3">
                                     <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">
                                         {{ selectedBrand?.name?.charAt(0) || 'B' }}
                                     </div>
                                     <div class="ml-3">
-                                        <p class="text-sm font-semibold">{{ selectedBrand?.name || 'Brand Name' }}</p>
-                                        <p class="text-xs text-gray-500">Just now</p>
+                                        <p class="text-sm font-semibold dark:text-white">{{ selectedBrand?.name || 'Brand Name' }}</p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">Just now</p>
                                     </div>
                                 </div>
                                 <div class="px-3 pb-2">
-                                    <p class="text-sm whitespace-pre-wrap">{{ form.caption || 'Your caption here...' }}</p>
+                                    <p class="text-sm whitespace-pre-wrap dark:text-gray-300">{{ form.caption || 'Your caption here...' }}</p>
                                 </div>
-                                <div class="bg-gray-100">
+                                <div class="bg-gray-100 dark:bg-gray-700">
                                     <img
                                         v-if="selectedMedia[0]"
                                         :src="selectedMedia[0].url"
@@ -453,10 +453,10 @@ onMounted(async () => {
             <div class="flex items-center justify-center min-h-screen px-4">
                 <div class="fixed inset-0 bg-gray-500 bg-opacity-75" @click="showMediaLibrary = false"></div>
 
-                <div class="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden flex flex-col">
-                    <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                        <h3 class="text-lg font-medium text-gray-900">Media Library</h3>
-                        <button @click="showMediaLibrary = false" class="text-gray-400 hover:text-gray-600">
+                <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+                    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-600 flex justify-between items-center">
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-white">Media Library</h3>
+                        <button @click="showMediaLibrary = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                             </svg>
@@ -464,12 +464,12 @@ onMounted(async () => {
                     </div>
 
                     <div class="flex-1 overflow-y-auto p-6">
-                        <div v-if="loadingMedia" class="text-center py-8 text-gray-500">
+                        <div v-if="loadingMedia" class="text-center py-8 text-gray-500 dark:text-gray-400">
                             Loading media...
                         </div>
-                        <div v-else-if="brandMedia.length === 0" class="text-center py-8 text-gray-500">
+                        <div v-else-if="brandMedia.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
                             No media uploaded for this brand yet.
-                            <RouterLink to="/media" class="block mt-2 text-indigo-600 hover:text-indigo-800">
+                            <RouterLink to="/media" class="block mt-2 text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300">
                                 Go to Media Library to upload
                             </RouterLink>
                         </div>
@@ -480,7 +480,7 @@ onMounted(async () => {
                                 @click="toggleMedia(media)"
                                 :class="[
                                     'relative aspect-square rounded-lg overflow-hidden cursor-pointer border-2 transition-all',
-                                    isMediaSelected(media) ? 'border-indigo-500 ring-2 ring-indigo-200' : 'border-transparent hover:border-gray-300'
+                                    isMediaSelected(media) ? 'border-primary-500 dark:border-primary-400 ring-2 ring-primary-200 dark:ring-primary-900/50' : 'border-transparent hover:border-gray-300 dark:hover:border-gray-600'
                                 ]"
                             >
                                 <img
@@ -495,9 +495,9 @@ onMounted(async () => {
                                 />
                                 <div
                                     v-if="isMediaSelected(media)"
-                                    class="absolute inset-0 bg-indigo-500 bg-opacity-20 flex items-center justify-center"
+                                    class="absolute inset-0 bg-primary-500 dark:bg-primary-600 bg-opacity-20 flex items-center justify-center"
                                 >
-                                    <svg class="w-8 h-8 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <svg class="w-8 h-8 text-primary-600 dark:text-primary-400" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
                                     </svg>
                                 </div>
@@ -505,11 +505,11 @@ onMounted(async () => {
                         </div>
                     </div>
 
-                    <div class="px-6 py-4 border-t border-gray-200 flex justify-between items-center">
-                        <span class="text-sm text-gray-500">{{ selectedMedia.length }} selected</span>
+                    <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-600 flex justify-between items-center">
+                        <span class="text-sm text-gray-500 dark:text-gray-400">{{ selectedMedia.length }} selected</span>
                         <button
                             @click="showMediaLibrary = false"
-                            class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                            class="px-4 py-2 bg-primary-600 dark:bg-primary-500 text-white rounded-md hover:bg-primary-700 dark:hover:bg-primary-600"
                         >
                             Done
                         </button>

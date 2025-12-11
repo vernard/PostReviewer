@@ -35,7 +35,12 @@ export default api;
 
 // Auth API
 export const authApi = {
-    register: (data) => api.post('/register', data),
+    register: (data) => {
+        const isFormData = data instanceof FormData;
+        return api.post('/register', data, isFormData ? {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        } : {});
+    },
     login: (data) => api.post('/login', data),
     logout: () => api.post('/logout'),
     user: () => api.get('/user'),
@@ -63,6 +68,10 @@ export const brandApi = {
     get: (id) => api.get(`/brands/${id}`),
     create: (data) => api.post('/brands', data),
     update: (id, data) => api.put(`/brands/${id}`, data),
+    updateWithLogo: (id, formData) => api.post(`/brands/${id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        params: { _method: 'PUT' },
+    }),
     delete: (id) => api.delete(`/brands/${id}`),
     addUser: (brandId, userId) => api.post(`/brands/${brandId}/users`, { user_id: userId }),
     removeUser: (brandId, userId) => api.delete(`/brands/${brandId}/users/${userId}`),

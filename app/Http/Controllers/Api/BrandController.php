@@ -85,16 +85,22 @@ class BrandController extends Controller
         $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'logo' => ['nullable', 'string'],
+            'logo' => ['nullable', 'image', 'max:2048'],
             'color_scheme' => ['nullable', 'array'],
             'profile_name' => ['nullable', 'string', 'max:255'],
             'profile_avatar' => ['nullable', 'string'],
             'settings' => ['nullable', 'array'],
         ]);
 
-        $brand->update($request->only([
-            'name', 'description', 'logo', 'color_scheme', 'profile_name', 'profile_avatar', 'settings'
-        ]));
+        $data = $request->only([
+            'name', 'description', 'color_scheme', 'profile_name', 'profile_avatar', 'settings'
+        ]);
+
+        if ($request->hasFile('logo')) {
+            $data['logo'] = $request->file('logo')->store('brands', 'public');
+        }
+
+        $brand->update($data);
 
         return response()->json([
             'brand' => $brand->fresh(),

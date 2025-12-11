@@ -70,11 +70,11 @@ const submitReview = async () => {
 
 const getStatusColor = (status) => {
     const colors = {
-        pending: 'bg-yellow-100 text-yellow-700',
-        approved: 'bg-green-100 text-green-700',
-        rejected: 'bg-red-100 text-red-700',
+        pending: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+        approved: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+        rejected: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
     };
-    return colors[status] || 'bg-gray-100 text-gray-700';
+    return colors[status] || 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
 };
 
 const formatStatus = (status) => {
@@ -117,7 +117,7 @@ onMounted(fetchApprovals);
         <div class="py-6">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between items-center">
-                    <h1 class="text-2xl font-semibold text-gray-900">Pending Approvals</h1>
+                    <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Pending Approvals</h1>
                     <div class="flex gap-2">
                         <button
                             v-for="status in ['pending', 'approved', 'rejected']"
@@ -126,8 +126,8 @@ onMounted(fetchApprovals);
                             :class="[
                                 'px-4 py-2 text-sm rounded-md',
                                 statusFilter === status
-                                    ? 'bg-indigo-600 text-white'
-                                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                                    ? 'bg-primary-600 text-white dark:bg-primary-500'
+                                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:bg-gray-700'
                             ]"
                         >
                             {{ status === 'rejected' ? 'Changes Requested' : status.charAt(0).toUpperCase() + status.slice(1) }}
@@ -137,33 +137,33 @@ onMounted(fetchApprovals);
             </div>
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
                 <!-- Permission Warning -->
-                <div v-if="!canReview" class="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded mb-6">
+                <div v-if="!canReview" class="bg-yellow-50 border border-yellow-200 text-yellow-700 dark:bg-yellow-900/30 dark:border-yellow-800 dark:text-yellow-400 px-4 py-3 rounded mb-6">
                     You don't have permission to review posts. Only admins, managers, and reviewers can approve or request changes.
                 </div>
 
                 <!-- Loading State -->
                 <div v-if="loading" class="space-y-4">
-                    <div v-for="i in 3" :key="i" class="bg-white shadow rounded-lg p-6 animate-pulse">
+                    <div v-for="i in 3" :key="i" class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 animate-pulse">
                         <div class="flex items-start gap-4">
-                            <div class="w-24 h-24 bg-gray-200 rounded"></div>
+                            <div class="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
                             <div class="flex-1">
-                                <div class="h-5 bg-gray-200 rounded w-48 mb-2"></div>
-                                <div class="h-4 bg-gray-200 rounded w-32 mb-4"></div>
-                                <div class="h-3 bg-gray-200 rounded w-64"></div>
+                                <div class="h-5 bg-gray-200 dark:bg-gray-700 rounded w-48 mb-2"></div>
+                                <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32 mb-4"></div>
+                                <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-64"></div>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Empty State -->
-                <div v-else-if="approvals.length === 0" class="bg-white shadow rounded-lg p-12 text-center">
+                <div v-else-if="approvals.length === 0" class="bg-white dark:bg-gray-800 shadow rounded-lg p-12 text-center">
                     <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <h3 class="mt-4 text-lg font-medium text-gray-900">
+                    <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-white">
                         {{ statusFilter === 'pending' ? 'No posts pending approval' : `No ${formatStatus(statusFilter).toLowerCase()} posts` }}
                     </h3>
-                    <p class="mt-2 text-gray-500">
+                    <p class="mt-2 text-gray-500 dark:text-gray-400">
                         {{ statusFilter === 'pending' ? 'All caught up! Check back later for new submissions.' : 'No posts match this filter.' }}
                     </p>
                 </div>
@@ -173,13 +173,13 @@ onMounted(fetchApprovals);
                     <div
                         v-for="approval in approvals"
                         :key="approval.id"
-                        class="bg-white shadow rounded-lg overflow-hidden"
+                        class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden"
                     >
                         <div class="p-6">
                             <div class="flex items-start gap-6">
                                 <!-- Thumbnail -->
                                 <RouterLink :to="`/posts/${approval.post?.id}`" class="flex-shrink-0">
-                                    <div class="w-32 h-32 bg-gray-100 rounded-lg overflow-hidden">
+                                    <div class="w-32 h-32 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
                                         <img
                                             v-if="approval.post?.media?.[0]"
                                             :src="approval.post.media[0].thumbnail_url || approval.post.media[0].url"
@@ -197,11 +197,11 @@ onMounted(fetchApprovals);
                                 <div class="flex-1 min-w-0">
                                     <div class="flex items-start justify-between">
                                         <div>
-                                            <RouterLink :to="`/posts/${approval.post?.id}`" class="text-lg font-medium text-gray-900 hover:text-indigo-600">
+                                            <RouterLink :to="`/posts/${approval.post?.id}`" class="text-lg font-medium text-gray-900 hover:text-primary-600 dark:text-white dark:hover:text-primary-400">
                                                 {{ approval.post?.title }}
                                             </RouterLink>
-                                            <p class="text-sm text-gray-500 mt-1">
-                                                <RouterLink :to="`/brands/${approval.post?.brand?.id}`" class="text-indigo-600 hover:text-indigo-800">
+                                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                                <RouterLink :to="`/brands/${approval.post?.brand?.id}`" class="text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300">
                                                     {{ approval.post?.brand?.name }}
                                                 </RouterLink>
                                                 <span class="mx-2">·</span>
@@ -214,12 +214,12 @@ onMounted(fetchApprovals);
                                     </div>
 
                                     <!-- Caption preview -->
-                                    <p v-if="approval.post?.caption" class="mt-3 text-sm text-gray-600 line-clamp-2">
+                                    <p v-if="approval.post?.caption" class="mt-3 text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
                                         {{ approval.post.caption }}
                                     </p>
 
                                     <!-- Meta info -->
-                                    <div class="mt-4 flex items-center gap-4 text-sm text-gray-500">
+                                    <div class="mt-4 flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
                                         <span class="flex items-center gap-1">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -241,19 +241,19 @@ onMounted(fetchApprovals);
                                     </div>
 
                                     <!-- Previous responses -->
-                                    <div v-if="approval.responses?.length" class="mt-4 border-t border-gray-100 pt-4">
-                                        <p class="text-sm font-medium text-gray-700 mb-2">Previous feedback:</p>
+                                    <div v-if="approval.responses?.length" class="mt-4 border-t border-gray-100 dark:border-gray-600 pt-4">
+                                        <p class="text-sm font-medium text-gray-700 dark:text-gray-400 mb-2">Previous feedback:</p>
                                         <div class="space-y-2">
                                             <div
                                                 v-for="response in approval.responses"
                                                 :key="response.id"
                                                 class="text-sm"
                                             >
-                                                <span class="font-medium">{{ response.user?.name }}</span>
-                                                <span :class="response.decision === 'approved' ? 'text-green-600' : 'text-red-600'">
+                                                <span class="font-medium dark:text-gray-300">{{ response.user?.name }}</span>
+                                                <span :class="response.decision === 'approved' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
                                                     {{ response.decision === 'approved' ? ' approved' : ' requested changes' }}
                                                 </span>
-                                                <p v-if="response.comment" class="text-gray-600 mt-1 ml-4 pl-2 border-l-2 border-gray-200">
+                                                <p v-if="response.comment" class="text-gray-600 dark:text-gray-400 mt-1 ml-4 pl-2 border-l-2 border-gray-200 dark:border-gray-600">
                                                     "{{ response.comment }}"
                                                 </p>
                                             </div>
@@ -264,16 +264,16 @@ onMounted(fetchApprovals);
                         </div>
 
                         <!-- Actions -->
-                        <div v-if="approval.status === 'pending' && canReview" class="px-6 py-4 bg-gray-50 flex justify-end gap-3 border-t border-gray-100">
+                        <div v-if="approval.status === 'pending' && canReview" class="px-6 py-4 bg-gray-50 dark:bg-gray-700 flex justify-end gap-3 border-t border-gray-100 dark:border-gray-600">
                             <RouterLink
                                 :to="`/posts/${approval.post?.id}`"
-                                class="px-4 py-2 text-sm text-gray-700 hover:text-gray-900"
+                                class="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
                             >
                                 View Details
                             </RouterLink>
                             <button
                                 @click="openReviewModal(approval)"
-                                class="px-4 py-2 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                                class="px-4 py-2 text-sm bg-primary-600 text-white rounded-md hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600"
                             >
                                 Review
                             </button>
@@ -288,11 +288,11 @@ onMounted(fetchApprovals);
             <div class="flex items-center justify-center min-h-screen px-4">
                 <div class="fixed inset-0 bg-gray-500 bg-opacity-75" @click="showReviewModal = false"></div>
 
-                <div class="relative bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">Review Post</h3>
+                <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Review Post</h3>
 
                     <div class="mb-6">
-                        <p class="text-sm text-gray-600 mb-4">
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
                             <strong>{{ selectedApproval?.post?.title }}</strong> by {{ selectedApproval?.post?.creator?.name }}
                         </p>
 
@@ -302,8 +302,8 @@ onMounted(fetchApprovals);
                                 :class="[
                                     'flex-1 py-3 rounded-lg border-2 transition-colors',
                                     reviewForm.action === 'approve'
-                                        ? 'border-green-500 bg-green-50 text-green-700'
-                                        : 'border-gray-200 text-gray-700 hover:border-gray-300'
+                                        ? 'border-green-500 bg-green-50 text-green-700 dark:border-green-400 dark:bg-green-900/30 dark:text-green-400'
+                                        : 'border-gray-200 text-gray-700 hover:border-gray-300 dark:border-gray-600 dark:text-gray-400 dark:hover:border-gray-500'
                                 ]"
                             >
                                 <svg class="w-6 h-6 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -316,8 +316,8 @@ onMounted(fetchApprovals);
                                 :class="[
                                     'flex-1 py-3 rounded-lg border-2 transition-colors',
                                     reviewForm.action === 'request_changes'
-                                        ? 'border-red-500 bg-red-50 text-red-700'
-                                        : 'border-gray-200 text-gray-700 hover:border-gray-300'
+                                        ? 'border-red-500 bg-red-50 text-red-700 dark:border-red-400 dark:bg-red-900/30 dark:text-red-400'
+                                        : 'border-gray-200 text-gray-700 hover:border-gray-300 dark:border-gray-600 dark:text-gray-400 dark:hover:border-gray-500'
                                 ]"
                             >
                                 <svg class="w-6 h-6 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -328,14 +328,14 @@ onMounted(fetchApprovals);
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1">
                                 {{ reviewForm.action === 'request_changes' ? 'Feedback (required)' : 'Comment (optional)' }}
                             </label>
                             <textarea
                                 v-model="reviewForm.comment"
                                 rows="3"
                                 :placeholder="reviewForm.action === 'request_changes' ? 'Explain what changes are needed...' : 'Add a comment...'"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
                             ></textarea>
                         </div>
                     </div>
@@ -343,7 +343,7 @@ onMounted(fetchApprovals);
                     <div class="flex justify-end gap-3">
                         <button
                             @click="showReviewModal = false"
-                            class="px-4 py-2 text-gray-700 hover:text-gray-900"
+                            class="px-4 py-2 text-gray-700 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
                         >
                             Cancel
                         </button>
@@ -353,10 +353,10 @@ onMounted(fetchApprovals);
                             :class="[
                                 'px-4 py-2 rounded-md disabled:opacity-50',
                                 reviewForm.action === 'approve'
-                                    ? 'bg-green-600 text-white hover:bg-green-700'
+                                    ? 'bg-green-600 text-white hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600'
                                     : reviewForm.action === 'request_changes'
-                                    ? 'bg-red-600 text-white hover:bg-red-700'
-                                    : 'bg-gray-300 text-gray-500'
+                                    ? 'bg-red-600 text-white hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600'
+                                    : 'bg-gray-300 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
                             ]"
                         >
                             {{ submitting ? 'Submitting...' : reviewForm.action === 'approve' ? 'Approve Post' : 'Request Changes' }}

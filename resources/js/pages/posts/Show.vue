@@ -4,6 +4,7 @@ import { useRoute, useRouter, RouterLink } from 'vue-router';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { postApi, commentApi } from '@/services/api';
 import { useAuthStore } from '@/stores/auth';
+import html2canvas from 'html2canvas-pro';
 
 const route = useRoute();
 const router = useRouter();
@@ -92,13 +93,13 @@ const addComment = async () => {
 
 const getStatusColor = (status) => {
     const colors = {
-        draft: 'bg-gray-100 text-gray-700',
-        pending_approval: 'bg-yellow-100 text-yellow-700',
-        changes_requested: 'bg-red-100 text-red-700',
-        approved: 'bg-green-100 text-green-700',
-        published: 'bg-blue-100 text-blue-700',
+        draft: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+        pending_approval: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+        changes_requested: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+        approved: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+        published: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
     };
-    return colors[status] || 'bg-gray-100 text-gray-700';
+    return colors[status] || 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
 };
 
 const formatStatus = (status) => {
@@ -115,6 +116,46 @@ const formatDate = (dateString) => {
     });
 };
 
+const mockupRef = ref(null);
+const exporting = ref(false);
+
+const exportAsJpeg = async () => {
+    if (exporting.value) return;
+
+    if (!mockupRef.value) {
+        alert('No mockup to export.');
+        return;
+    }
+
+    try {
+        exporting.value = true;
+
+        // Wait a tick for Vue to finish any pending updates
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        const canvas = await html2canvas(mockupRef.value, {
+            backgroundColor: '#ffffff',
+            scale: 2,
+            useCORS: true,
+            allowTaint: true,
+            logging: false,
+        });
+
+        const link = document.createElement('a');
+        const platformName = activePreview.value.replace(/_/g, '-');
+        link.download = `${post.value.brand?.name || 'post'}-${platformName}-${Date.now()}.jpg`;
+        link.href = canvas.toDataURL('image/jpeg', 0.95);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    } catch (err) {
+        console.error('Export failed:', err);
+        alert('Failed to export mockup: ' + err.message);
+    } finally {
+        exporting.value = false;
+    }
+};
+
 onMounted(fetchPost);
 </script>
 
@@ -124,12 +165,12 @@ onMounted(fetchPost);
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <!-- Loading -->
                 <div v-if="loading" class="animate-pulse">
-                    <div class="h-8 bg-gray-200 rounded w-48 mb-4"></div>
-                    <div class="h-4 bg-gray-200 rounded w-96"></div>
+                    <div class="h-8 bg-gray-200 dark:bg-gray-700 rounded w-48 mb-4"></div>
+                    <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-96"></div>
                 </div>
 
                 <!-- Error -->
-                <div v-else-if="error" class="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
+                <div v-else-if="error" class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded">
                     {{ error }}
                     <RouterLink to="/posts" class="ml-4 underline">Back to posts</RouterLink>
                 </div>
@@ -139,18 +180,18 @@ onMounted(fetchPost);
                     <!-- Header -->
                     <div class="flex items-center justify-between">
                         <div class="flex items-center">
-                            <RouterLink to="/posts" class="text-gray-400 hover:text-gray-600 mr-4">
+                            <RouterLink to="/posts" class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 mr-4">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                                 </svg>
                             </RouterLink>
                             <div>
-                                <h1 class="text-2xl font-semibold text-gray-900">{{ post.title }}</h1>
+                                <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">{{ post.title }}</h1>
                                 <div class="flex items-center gap-2 mt-1">
-                                    <RouterLink :to="`/brands/${post.brand?.id}`" class="text-sm text-indigo-600 hover:text-indigo-800">
+                                    <RouterLink :to="`/brands/${post.brand?.id}`" class="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300">
                                         {{ post.brand?.name }}
                                     </RouterLink>
-                                    <span class="text-gray-300">|</span>
+                                    <span class="text-gray-300 dark:text-gray-600">|</span>
                                     <span :class="[getStatusColor(post.status), 'px-2 py-0.5 text-xs font-medium rounded-full']">
                                         {{ formatStatus(post.status) }}
                                     </span>
@@ -161,21 +202,21 @@ onMounted(fetchPost);
                             <button
                                 v-if="canSubmitForApproval"
                                 @click="submitForApproval"
-                                class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                                class="px-4 py-2 bg-primary-600 dark:bg-primary-500 text-white rounded-md hover:bg-primary-700 dark:hover:bg-primary-600"
                             >
                                 Submit for Approval
                             </button>
                             <RouterLink
                                 v-if="canEdit && post.status !== 'approved'"
                                 :to="`/posts/${postId}/edit`"
-                                class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                                class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                             >
                                 Edit
                             </RouterLink>
                             <button
                                 v-if="canEdit"
                                 @click="deletePost"
-                                class="px-4 py-2 border border-red-300 rounded-md text-red-600 hover:bg-red-50"
+                                class="px-4 py-2 border border-red-300 dark:border-red-600 rounded-md text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
                             >
                                 Delete
                             </button>
@@ -186,9 +227,9 @@ onMounted(fetchPost);
                     <div class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
                         <!-- Preview Column -->
                         <div class="lg:col-span-2">
-                            <div class="bg-white shadow rounded-lg p-6">
+                            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
                                 <div class="flex justify-between items-center mb-4">
-                                    <h2 class="text-lg font-medium text-gray-900">Preview</h2>
+                                    <h2 class="text-lg font-medium text-gray-900 dark:text-white">Preview</h2>
                                     <div v-if="post.platforms?.length > 0" class="flex gap-2">
                                         <button
                                             v-for="platform in post.platforms"
@@ -197,8 +238,8 @@ onMounted(fetchPost);
                                             :class="[
                                                 'px-3 py-1 text-xs rounded-full',
                                                 activePreview === platform
-                                                    ? 'bg-indigo-100 text-indigo-700'
-                                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                                    ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
+                                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
                                             ]"
                                         >
                                             {{ platform.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase()) }}
@@ -209,17 +250,18 @@ onMounted(fetchPost);
                                 <!-- Instagram Feed Preview -->
                                 <div
                                     v-if="activePreview.includes('instagram_feed')"
-                                    class="max-w-sm mx-auto bg-white border border-gray-200 rounded-lg overflow-hidden"
+                                    ref="mockupRef"
+                                    class="max-w-sm mx-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden"
                                 >
                                     <div class="flex items-center p-3">
                                         <div class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
                                             {{ post.brand?.name?.charAt(0) || 'B' }}
                                         </div>
                                         <div class="ml-3">
-                                            <p class="text-sm font-semibold">{{ post.brand?.name }}</p>
+                                            <p class="text-sm font-semibold dark:text-white">{{ post.brand?.name }}</p>
                                         </div>
                                     </div>
-                                    <div class="aspect-square bg-gray-100">
+                                    <div class="aspect-square bg-gray-100 dark:bg-gray-700">
                                         <img
                                             v-if="post.media?.[0]"
                                             :src="post.media[0].url"
@@ -228,20 +270,20 @@ onMounted(fetchPost);
                                     </div>
                                     <div class="p-3">
                                         <div class="flex gap-4 mb-2">
-                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg class="w-6 h-6 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                                             </svg>
-                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg class="w-6 h-6 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                                             </svg>
                                         </div>
-                                        <p class="text-sm">
-                                            <span class="font-semibold">{{ post.brand?.name }}</span>
+                                        <p class="text-sm dark:text-gray-300">
+                                            <span class="font-semibold dark:text-white">{{ post.brand?.name }}</span>
                                             <span class="whitespace-pre-wrap"> {{ truncatedCaption }}</span>
                                             <button
                                                 v-if="post.caption?.length > 125"
                                                 @click="showFullCaption = !showFullCaption"
-                                                class="text-gray-500 ml-1"
+                                                class="text-gray-500 dark:text-gray-400 ml-1"
                                             >
                                                 {{ showFullCaption ? 'less' : 'more' }}
                                             </button>
@@ -252,37 +294,39 @@ onMounted(fetchPost);
                                 <!-- Facebook Feed Preview -->
                                 <div
                                     v-else-if="activePreview.includes('facebook_feed')"
-                                    class="max-w-sm mx-auto bg-white border border-gray-200 rounded-lg overflow-hidden"
+                                    ref="mockupRef"
+                                    class="max-w-sm mx-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden"
                                 >
                                     <div class="flex items-center p-3">
                                         <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">
                                             {{ post.brand?.name?.charAt(0) || 'B' }}
                                         </div>
                                         <div class="ml-3">
-                                            <p class="text-sm font-semibold">{{ post.brand?.name }}</p>
-                                            <p class="text-xs text-gray-500">Just now</p>
+                                            <p class="text-sm font-semibold dark:text-white">{{ post.brand?.name }}</p>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">Just now</p>
                                         </div>
                                     </div>
                                     <div class="px-3 pb-2">
-                                        <p class="text-sm whitespace-pre-wrap">{{ post.caption }}</p>
+                                        <p class="text-sm whitespace-pre-wrap dark:text-gray-300">{{ post.caption }}</p>
                                     </div>
-                                    <div class="bg-gray-100">
+                                    <div class="bg-gray-100 dark:bg-gray-700">
                                         <img
                                             v-if="post.media?.[0]"
                                             :src="post.media[0].url"
                                             class="w-full"
                                         />
                                     </div>
-                                    <div class="p-3 border-t border-gray-200 flex justify-around">
-                                        <span class="text-gray-500 text-sm">Like</span>
-                                        <span class="text-gray-500 text-sm">Comment</span>
-                                        <span class="text-gray-500 text-sm">Share</span>
+                                    <div class="p-3 border-t border-gray-200 dark:border-gray-600 flex justify-around">
+                                        <span class="text-gray-500 dark:text-gray-400 text-sm">Like</span>
+                                        <span class="text-gray-500 dark:text-gray-400 text-sm">Comment</span>
+                                        <span class="text-gray-500 dark:text-gray-400 text-sm">Share</span>
                                     </div>
                                 </div>
 
                                 <!-- Story Preview -->
                                 <div
                                     v-else
+                                    ref="mockupRef"
                                     class="max-w-[280px] mx-auto bg-black rounded-2xl overflow-hidden aspect-[9/16] relative"
                                 >
                                     <img
@@ -299,16 +343,34 @@ onMounted(fetchPost);
                                         </div>
                                     </div>
                                 </div>
+
+                                <!-- Export Button -->
+                                <div class="mt-4 text-center">
+                                    <button
+                                        @click="exportAsJpeg"
+                                        :disabled="exporting"
+                                        class="inline-flex items-center px-4 py-2 bg-green-600 dark:bg-green-500 text-white rounded-md hover:bg-green-700 dark:hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <svg v-if="!exporting" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                        </svg>
+                                        <svg v-else class="w-5 h-5 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        {{ exporting ? 'Exporting...' : 'Export as JPEG' }}
+                                    </button>
+                                </div>
                             </div>
 
                             <!-- Media Gallery -->
-                            <div v-if="post.media?.length > 1" class="mt-6 bg-white shadow rounded-lg p-6">
-                                <h3 class="text-lg font-medium text-gray-900 mb-4">All Media ({{ post.media.length }})</h3>
+                            <div v-if="post.media?.length > 1" class="mt-6 bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+                                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">All Media ({{ post.media.length }})</h3>
                                 <div class="grid grid-cols-4 gap-4">
                                     <div
                                         v-for="media in post.media"
                                         :key="media.id"
-                                        class="aspect-square rounded-lg overflow-hidden"
+                                        class="aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700"
                                     >
                                         <img
                                             v-if="media.type === 'image'"
@@ -328,28 +390,28 @@ onMounted(fetchPost);
                         <!-- Sidebar -->
                         <div class="space-y-6">
                             <!-- Post Details -->
-                            <div class="bg-white shadow rounded-lg p-6">
-                                <h3 class="text-lg font-medium text-gray-900 mb-4">Details</h3>
+                            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+                                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Details</h3>
                                 <dl class="space-y-3">
                                     <div>
-                                        <dt class="text-sm font-medium text-gray-500">Created by</dt>
-                                        <dd class="text-sm text-gray-900">{{ post.creator?.name }}</dd>
+                                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Created by</dt>
+                                        <dd class="text-sm text-gray-900 dark:text-white">{{ post.creator?.name }}</dd>
                                     </div>
                                     <div>
-                                        <dt class="text-sm font-medium text-gray-500">Created</dt>
-                                        <dd class="text-sm text-gray-900">{{ formatDate(post.created_at) }}</dd>
+                                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Created</dt>
+                                        <dd class="text-sm text-gray-900 dark:text-white">{{ formatDate(post.created_at) }}</dd>
                                     </div>
                                     <div>
-                                        <dt class="text-sm font-medium text-gray-500">Last updated</dt>
-                                        <dd class="text-sm text-gray-900">{{ formatDate(post.updated_at) }}</dd>
+                                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Last updated</dt>
+                                        <dd class="text-sm text-gray-900 dark:text-white">{{ formatDate(post.updated_at) }}</dd>
                                     </div>
                                     <div>
-                                        <dt class="text-sm font-medium text-gray-500">Platforms</dt>
+                                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Platforms</dt>
                                         <dd class="flex flex-wrap gap-1 mt-1">
                                             <span
                                                 v-for="platform in post.platforms"
                                                 :key="platform"
-                                                class="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded"
+                                                class="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded"
                                             >
                                                 {{ platform.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase()) }}
                                             </span>
@@ -359,10 +421,10 @@ onMounted(fetchPost);
                             </div>
 
                             <!-- Comments -->
-                            <div class="bg-white shadow rounded-lg p-6">
-                                <h3 class="text-lg font-medium text-gray-900 mb-4">Comments</h3>
+                            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+                                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Comments</h3>
 
-                                <div v-if="!post.comments?.length" class="text-gray-500 text-sm">
+                                <div v-if="!post.comments?.length" class="text-gray-500 dark:text-gray-400 text-sm">
                                     No comments yet.
                                 </div>
 
@@ -370,13 +432,13 @@ onMounted(fetchPost);
                                     <div
                                         v-for="comment in post.comments"
                                         :key="comment.id"
-                                        class="border-l-2 border-gray-200 pl-3"
+                                        class="border-l-2 border-gray-200 dark:border-gray-600 pl-3"
                                     >
                                         <div class="flex items-center justify-between">
-                                            <span class="text-sm font-medium text-gray-900">{{ comment.user?.name }}</span>
-                                            <span class="text-xs text-gray-500">{{ formatDate(comment.created_at) }}</span>
+                                            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ comment.user?.name }}</span>
+                                            <span class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(comment.created_at) }}</span>
                                         </div>
-                                        <p class="text-sm text-gray-700 mt-1">{{ comment.body }}</p>
+                                        <p class="text-sm text-gray-700 dark:text-gray-300 mt-1">{{ comment.body }}</p>
                                     </div>
                                 </div>
 
@@ -385,12 +447,12 @@ onMounted(fetchPost);
                                         v-model="newComment"
                                         rows="2"
                                         placeholder="Add a comment..."
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                                     ></textarea>
                                     <button
                                         type="submit"
                                         :disabled="!newComment.trim() || submittingComment"
-                                        class="mt-2 px-4 py-2 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700 disabled:opacity-50"
+                                        class="mt-2 px-4 py-2 bg-primary-600 dark:bg-primary-500 text-white text-sm rounded-md hover:bg-primary-700 dark:hover:bg-primary-600 disabled:opacity-50"
                                     >
                                         {{ submittingComment ? 'Posting...' : 'Post Comment' }}
                                     </button>
@@ -398,13 +460,13 @@ onMounted(fetchPost);
                             </div>
 
                             <!-- Approval History -->
-                            <div v-if="post.latest_approval_request" class="bg-white shadow rounded-lg p-6">
-                                <h3 class="text-lg font-medium text-gray-900 mb-4">Approval Status</h3>
-                                <div class="border-l-2 border-indigo-500 pl-3">
-                                    <p class="text-sm font-medium text-gray-900">
+                            <div v-if="post.latest_approval_request" class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+                                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Approval Status</h3>
+                                <div class="border-l-2 border-primary-500 dark:border-primary-400 pl-3">
+                                    <p class="text-sm font-medium text-gray-900 dark:text-white">
                                         {{ formatStatus(post.latest_approval_request.status) }}
                                     </p>
-                                    <p class="text-xs text-gray-500 mt-1">
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                         Requested {{ formatDate(post.latest_approval_request.created_at) }}
                                     </p>
                                     <div v-if="post.latest_approval_request.responses?.length" class="mt-3 space-y-2">
@@ -413,11 +475,11 @@ onMounted(fetchPost);
                                             :key="response.id"
                                             class="text-sm"
                                         >
-                                            <span class="font-medium">{{ response.user?.name }}</span>
-                                            <span :class="response.approved ? 'text-green-600' : 'text-red-600'">
+                                            <span class="font-medium dark:text-white">{{ response.user?.name }}</span>
+                                            <span :class="response.approved ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
                                                 {{ response.approved ? ' approved' : ' requested changes' }}
                                             </span>
-                                            <p v-if="response.comment" class="text-gray-600 mt-1">{{ response.comment }}</p>
+                                            <p v-if="response.comment" class="text-gray-600 dark:text-gray-400 mt-1">{{ response.comment }}</p>
                                         </div>
                                     </div>
                                 </div>

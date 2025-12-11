@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <defs>
+    <linearGradient id="like-grad" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#47A2FF"/>
+      <stop offset="100%" stop-color="#0062E0"/>
+    </linearGradient>
+  </defs>
+  <circle cx="24" cy="24" r="24" fill="url(#like-grad)"/>
+  <path d="M17 27.5v-10c0-.8.7-1.5 1.5-1.5h1c.8 0 1.5.7 1.5 1.5v10c0 .8-.7 1.5-1.5 1.5h-1c-.8 0-1.5-.7-1.5-1.5zm14.5-10h-5l.8-3.5c.2-.8-.1-1.6-.7-2.1l-.6-.4-5.5 6.5c-.3.4-.5.9-.5 1.5v7c0 1.1.9 2 2 2h7c.8 0 1.6-.5 1.9-1.3l2.3-6c.6-1.5-.5-3.2-2.2-3.2l.5-.5z" fill="#fff"/>
+</svg>

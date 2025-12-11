@@ -30,6 +30,13 @@ class Brand extends Model
         'settings' => 'array',
     ];
 
+    protected $appends = ['logo_url'];
+
+    public function getLogoUrlAttribute(): ?string
+    {
+        return $this->logo ? asset('storage/' . $this->logo) : null;
+    }
+
     protected static function boot()
     {
         parent::boot();

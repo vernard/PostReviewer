@@ -90,7 +90,7 @@ class MediaController extends Controller
         }
 
         // Store file
-        $path = $file->store("brands/{$brand->id}/media", 'local');
+        $path = $file->store("brands/{$brand->id}/media", 'public');
 
         // Create media record
         $media = Media::create([
@@ -98,7 +98,7 @@ class MediaController extends Controller
             'user_id' => $user->id,
             'type' => $type,
             'original_filename' => $file->getClientOriginalName(),
-            'disk' => 'local',
+            'disk' => 'public',
             'path' => $path,
             'mime_type' => $mimeType,
             'size' => $file->getSize(),

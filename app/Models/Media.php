@@ -38,6 +38,8 @@ class Media extends Model
         'duration' => 'integer',
     ];
 
+    protected $appends = ['url', 'thumbnail_url'];
+
     public function brand(): BelongsTo
     {
         return $this->belongsTo(Brand::class);
