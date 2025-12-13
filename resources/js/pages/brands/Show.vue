@@ -24,6 +24,8 @@ const editForm = ref({
     name: '',
     description: '',
     logo: null,
+    instagram_handle: '',
+    facebook_page_name: '',
 });
 const logoPreview = ref(null);
 const logoInput = ref(null);
@@ -47,6 +49,8 @@ const fetchBrand = async () => {
         editForm.value = {
             name: brand.value.name,
             description: brand.value.description || '',
+            instagram_handle: brand.value.instagram_handle || '',
+            facebook_page_name: brand.value.facebook_page_name || '',
         };
     } catch (err) {
         error.value = 'Failed to load brand';
@@ -100,6 +104,8 @@ const updateBrand = async () => {
         const formData = new FormData();
         formData.append('name', editForm.value.name);
         formData.append('description', editForm.value.description || '');
+        formData.append('instagram_handle', editForm.value.instagram_handle || '');
+        formData.append('facebook_page_name', editForm.value.facebook_page_name || '');
         if (editForm.value.logo) {
             formData.append('logo', editForm.value.logo);
         }
@@ -109,6 +115,8 @@ const updateBrand = async () => {
         brand.value.name = updatedBrand.name;
         brand.value.description = updatedBrand.description;
         brand.value.logo_url = updatedBrand.logo_url;
+        brand.value.instagram_handle = updatedBrand.instagram_handle;
+        brand.value.facebook_page_name = updatedBrand.facebook_page_name;
         showEditModal.value = false;
         editForm.value.logo = null;
         logoPreview.value = null;
@@ -433,13 +441,36 @@ onMounted(async () => {
                             />
                         </div>
 
-                        <div class="mb-6">
+                        <div class="mb-4">
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
                             <textarea
                                 v-model="editForm.description"
                                 rows="3"
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                             ></textarea>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Instagram Handle</label>
+                            <div class="flex">
+                                <span class="inline-flex items-center px-3 text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-600 border border-r-0 border-gray-300 dark:border-gray-600 rounded-l-md">@</span>
+                                <input
+                                    v-model="editForm.instagram_handle"
+                                    type="text"
+                                    placeholder="username"
+                                    class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-r-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                                />
+                            </div>
+                        </div>
+
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Facebook Page Name</label>
+                            <input
+                                v-model="editForm.facebook_page_name"
+                                type="text"
+                                placeholder="Page Name"
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                            />
                         </div>
 
                         <div class="flex justify-end gap-3">

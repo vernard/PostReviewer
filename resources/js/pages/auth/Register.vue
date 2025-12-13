@@ -55,8 +55,9 @@ const submit = async () => {
     <div class="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
         <div class="max-w-md w-full space-y-8">
             <div>
-                <RouterLink to="/" class="block text-center text-xl font-bold text-primary-600 dark:text-primary-500 hover:text-primary-700 dark:hover:text-primary-400">
-                    Post Reviewer
+                <RouterLink to="/" class="block text-center">
+                    <img src="/images/post-reviewer-logo.svg" alt="Post Reviewer" class="h-10 mx-auto shrink-0 dark:hidden" />
+                    <img src="/images/post-reviewer-logo-dark.svg" alt="Post Reviewer" class="h-10 mx-auto shrink-0 hidden dark:block" />
                 </RouterLink>
                 <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
                     Create your account

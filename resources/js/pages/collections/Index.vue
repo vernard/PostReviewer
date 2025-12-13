@@ -1,16 +1,21 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { collectionApi, brandApi } from '@/services/api';
+import { collectionApi } from '@/services/api';
+import { useBrandStore } from '@/stores/brand';
+
+const brandStore = useBrandStore();
 
 const collections = ref([]);
-const brands = ref([]);
 const loading = ref(true);
 const error = ref('');
 
-// Filters
-const selectedBrandId = ref('');
+// Use brands from global store
+const brands = computed(() => brandStore.brands);
+
+// Use active brand as default filter
+const selectedBrandId = ref(brandStore.activeBrandId || '');
 
 const filteredCollections = computed(() => {
     let result = collections.value;
@@ -37,15 +42,6 @@ const fetchCollections = async () => {
     }
 };
 
-const fetchBrands = async () => {
-    try {
-        const response = await brandApi.list();
-        brands.value = response.data.brands || response.data.data || response.data;
-    } catch (err) {
-        console.error('Failed to fetch brands:', err);
-    }
-};
-
 const getStatusColor = (status) => {
     const colors = {
         draft: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
@@ -62,9 +58,16 @@ const copyApprovalLink = (collection) => {
     }
 };
 
+// Sync filter when active brand changes in the store
+watch(() => brandStore.activeBrandId, (newBrandId) => {
+    if (newBrandId && selectedBrandId.value !== newBrandId) {
+        selectedBrandId.value = newBrandId;
+        fetchCollections();
+    }
+});
+
 onMounted(() => {
     fetchCollections();
-    fetchBrands();
 });
 </script>
 

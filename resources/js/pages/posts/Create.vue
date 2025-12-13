@@ -2,25 +2,25 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter, useRoute, RouterLink } from 'vue-router';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { postApi, brandApi, mediaApi } from '@/services/api';
+import { postApi, mediaApi } from '@/services/api';
+import { useBrandStore } from '@/stores/brand';
 
 const router = useRouter();
 const route = useRoute();
+const brandStore = useBrandStore();
 
-const brand = ref(null);
 const brandMedia = ref([]);
 const loading = ref(false);
-const loadingBrand = ref(true);
 const loadingMedia = ref(false);
+const uploading = ref(false);
+const uploadProgress = ref(0);
 const error = ref('');
 
-// Get brand_id from URL - required
-const brandId = computed(() => {
-    return route.query.brand_id ? parseInt(route.query.brand_id) : null;
-});
+// Use the active brand from the global store
+const brand = computed(() => brandStore.activeBrand);
 
 const form = ref({
-    brand_id: brandId.value,
+    brand_id: brandStore.activeBrandId,
     title: '',
     caption: '',
     platforms: [],
@@ -39,6 +39,14 @@ const platforms = [
 ];
 
 const selectedBrand = computed(() => brand.value);
+
+// Display names for mockups - use platform-specific names or fall back to brand name
+const instagramDisplayName = computed(() =>
+    selectedBrand.value?.instagram_handle || selectedBrand.value?.name || 'Brand'
+);
+const facebookDisplayName = computed(() =>
+    selectedBrand.value?.facebook_page_name || selectedBrand.value?.name || 'Brand'
+);
 
 const canSubmit = computed(() => {
     return form.value.brand_id &&
@@ -63,43 +71,30 @@ watch(() => form.value.platforms, (newPlatforms) => {
     }
 }, { deep: true });
 
-const fetchBrand = async () => {
-    if (!brandId.value) {
-        // No brand specified - redirect to brands page
+// Check brand and fetch media on mount
+const initPage = () => {
+    if (!brandStore.activeBrand) {
+        // No active brand - redirect to brands page
         router.push('/brands');
         return;
     }
 
-    try {
-        loadingBrand.value = true;
-        const response = await brandApi.get(brandId.value);
-        brand.value = response.data.brand || response.data.data || response.data;
-        form.value.brand_id = brand.value.id;
+    // Update form with current brand
+    form.value.brand_id = brandStore.activeBrandId;
 
-        // Remember this brand for convenience
-        localStorage.setItem('last_selected_brand_id', brand.value.id.toString());
-
-        // Fetch media for this brand
-        fetchBrandMedia();
-    } catch (err) {
-        console.error('Failed to fetch brand:', err);
-        error.value = 'Brand not found or you do not have access';
-        // Redirect to brands page after a short delay
-        setTimeout(() => router.push('/brands'), 2000);
-    } finally {
-        loadingBrand.value = false;
-    }
+    // Fetch media for this brand
+    fetchBrandMedia();
 };
 
 const fetchBrandMedia = async () => {
-    if (!brandId.value) {
+    if (!brandStore.activeBrandId) {
         brandMedia.value = [];
         return;
     }
 
     try {
         loadingMedia.value = true;
-        const response = await mediaApi.list({ brand_id: brandId.value });
+        const response = await mediaApi.list({ brand_id: brandStore.activeBrandId });
         brandMedia.value = response.data.data || response.data || [];
     } catch (err) {
         console.error('Failed to fetch media:', err);
@@ -111,7 +106,8 @@ const fetchBrandMedia = async () => {
 const toggleMedia = (media) => {
     const index = selectedMedia.value.findIndex(m => m.id === media.id);
     if (index === -1) {
-        selectedMedia.value.push(media);
+        // Single media only - replace instead of append
+        selectedMedia.value = [media];
     } else {
         selectedMedia.value.splice(index, 1);
     }
@@ -123,6 +119,58 @@ const isMediaSelected = (media) => {
 
 const removeMedia = (index) => {
     selectedMedia.value.splice(index, 1);
+};
+
+const handleFileDrop = (event) => {
+    event.preventDefault();
+    const files = Array.from(event.dataTransfer.files).filter(
+        file => file.type.startsWith('image/') || file.type.startsWith('video/')
+    );
+    if (files.length > 0) {
+        // Single media only - take first file
+        uploadFile(files[0]);
+    }
+};
+
+const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+        uploadFile(file);
+    }
+    // Reset input so same file can be selected again
+    event.target.value = '';
+};
+
+const uploadFile = async (file) => {
+    if (!brandStore.activeBrandId) {
+        error.value = 'Please select a brand first';
+        return;
+    }
+
+    uploading.value = true;
+    uploadProgress.value = 0;
+    error.value = '';
+
+    try {
+        const response = await mediaApi.upload(
+            brandStore.activeBrandId,
+            file,
+            (progress) => {
+                uploadProgress.value = progress;
+            }
+        );
+        // Auto-select the uploaded media (replaces any existing)
+        const uploadedMedia = response.data.media || response.data;
+        selectedMedia.value = [uploadedMedia];
+        // Add to brand media list
+        brandMedia.value.unshift(uploadedMedia);
+    } catch (err) {
+        error.value = err.response?.data?.message || 'Failed to upload file';
+        console.error('Upload failed:', err);
+    } finally {
+        uploading.value = false;
+        uploadProgress.value = 0;
+    }
 };
 
 const saveDraft = async () => {
@@ -169,62 +217,154 @@ const submitForApproval = async () => {
     }
 };
 
+// Watch for brand changes in the store
+watch(() => brandStore.activeBrandId, (newVal, oldVal) => {
+    if (newVal && newVal !== oldVal) {
+        form.value.brand_id = newVal;
+        selectedMedia.value = []; // Clear selected media when brand changes
+        fetchBrandMedia();
+    }
+});
+
 onMounted(() => {
-    fetchBrand();
+    initPage();
 });
 </script>
 
 <template>
     <AppLayout>
-        <div class="py-6">
+        <div class="py-4">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-4">
-                        <RouterLink :to="`/brands/${brandId}`" class="text-gray-400 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-300">
+                <div class="flex items-center justify-between gap-2 mb-4">
+                    <div class="flex items-center gap-2 sm:gap-4">
+                        <button @click="router.back()" class="text-gray-400 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-300">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                             </svg>
-                        </RouterLink>
-                        <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Create Post</h1>
+                        </button>
+                        <h1 class="text-lg sm:text-2xl font-semibold text-gray-900 dark:text-white">Create Post</h1>
                     </div>
-                    <!-- Brand Context -->
-                    <RouterLink
-                        v-if="brand"
-                        :to="`/brands/${brand.id}`"
-                        class="flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                    >
-                        <div
-                            v-if="brand.logo_url"
-                            class="w-6 h-6 rounded-full overflow-hidden"
+                    <!-- Actions -->
+                    <div class="flex gap-2">
+                        <button
+                            @click="saveDraft"
+                            :disabled="!canSubmit || loading"
+                            class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
                         >
-                            <img :src="brand.logo_url" :alt="brand.name" class="w-full h-full object-cover" />
-                        </div>
-                        <div
-                            v-else
-                            class="w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center"
+                            <span class="hidden sm:inline">{{ loading ? 'Saving...' : 'Save Draft' }}</span>
+                            <span class="sm:hidden">{{ loading ? '...' : 'Draft' }}</span>
+                        </button>
+                        <button
+                            @click="submitForApproval"
+                            :disabled="!canSubmit || loading"
+                            class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm bg-primary-600 dark:bg-primary-500 text-white rounded-md hover:bg-primary-700 dark:hover:bg-primary-600 disabled:opacity-50"
                         >
-                            <span class="text-primary-600 dark:text-primary-400 text-xs font-semibold">
-                                {{ brand.name?.charAt(0)?.toUpperCase() }}
-                            </span>
-                        </div>
-                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ brand.name }}</span>
-                    </RouterLink>
+                            <span class="hidden sm:inline">{{ loading ? 'Submitting...' : 'Submit for Approval' }}</span>
+                            <span class="sm:hidden">{{ loading ? '...' : 'Submit' }}</span>
+                        </button>
+                    </div>
                 </div>
             </div>
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div v-if="error" class="mb-6 bg-red-50 border border-red-200 text-red-600 dark:bg-red-900/30 dark:border-red-800 dark:text-red-400 px-4 py-3 rounded">
                     {{ error }}
                 </div>
 
-                <!-- Loading state -->
-                <div v-if="loadingBrand" class="text-center py-12">
-                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
-                    <p class="mt-2 text-gray-500 dark:text-gray-400">Loading brand...</p>
-                </div>
-
-                <div v-else-if="brand" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div v-if="brand" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <!-- Form -->
                     <div class="space-y-6">
+                        <!-- Media Section -->
+                        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <h2 class="text-lg font-medium text-gray-900 dark:text-white">Media</h2>
+                                <button
+                                    @click="showMediaLibrary = true"
+                                    class="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300"
+                                >
+                                    Browse Library
+                                </button>
+                            </div>
+
+                            <!-- Upload/Drop Zone (shown when no media selected) -->
+                            <div
+                                v-if="selectedMedia.length === 0"
+                                @drop="handleFileDrop"
+                                @dragover.prevent
+                                @dragenter.prevent
+                                class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center hover:border-primary-400 dark:hover:border-primary-500 transition-colors"
+                            >
+                                <div v-if="uploading" class="space-y-3">
+                                    <svg class="mx-auto h-12 w-12 text-primary-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                    </svg>
+                                    <p class="text-gray-600 dark:text-gray-400">Uploading... {{ uploadProgress }}%</p>
+                                    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                        <div class="bg-primary-500 h-2 rounded-full transition-all" :style="{ width: uploadProgress + '%' }"></div>
+                                    </div>
+                                </div>
+                                <div v-else>
+                                    <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                    </svg>
+                                    <p class="mt-2 text-gray-600 dark:text-gray-400">Drag & drop files here</p>
+                                    <div class="mt-3 flex items-center justify-center gap-3">
+                                        <label class="cursor-pointer px-3 py-1.5 bg-primary-600 dark:bg-primary-500 text-white text-sm rounded-md hover:bg-primary-700 dark:hover:bg-primary-600">
+                                            Upload
+                                            <input type="file" @change="handleFileUpload" class="hidden" multiple accept="image/*,video/*" />
+                                        </label>
+                                        <span class="text-gray-400 dark:text-gray-500">or</span>
+                                        <button
+                                            @click="showMediaLibrary = true"
+                                            class="px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
+                                        >
+                                            Browse Library
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div v-else class="grid grid-cols-3 gap-2">
+                                <div
+                                    v-for="(media, index) in selectedMedia"
+                                    :key="media.id"
+                                    class="relative aspect-square rounded-lg overflow-hidden group"
+                                >
+                                    <img
+                                        v-if="media.type === 'image'"
+                                        :src="media.thumbnail_url || media.url"
+                                        class="w-full h-full object-cover"
+                                    />
+                                    <video
+                                        v-else
+                                        :src="media.url"
+                                        class="w-full h-full object-cover"
+                                    />
+                                    <button
+                                        @click="removeMedia(index)"
+                                        class="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                    <span class="absolute bottom-1 left-1 bg-black bg-opacity-60 text-white text-xs px-2 py-0.5 rounded">
+                                        {{ index + 1 }}
+                                    </span>
+                                </div>
+                                <!-- Add more button -->
+                                <label
+                                    class="aspect-square rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex flex-col items-center justify-center cursor-pointer hover:border-primary-400 dark:hover:border-primary-500 transition-colors"
+                                >
+                                    <svg class="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                    </svg>
+                                    <span class="text-xs text-gray-500 dark:text-gray-400 mt-1">Add</span>
+                                    <input type="file" @change="handleFileUpload" class="hidden" multiple accept="image/*,video/*" />
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Post Details -->
                         <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
                             <h2 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Post Details</h2>
                             <div class="space-y-4">
@@ -257,7 +397,7 @@ onMounted(() => {
                                             v-for="platform in platforms"
                                             :key="platform.id"
                                             :class="[
-                                                'flex items-center p-3 border rounded-lg cursor-pointer transition-colors',
+                                                'flex items-center p-2 sm:p-3 border rounded-lg cursor-pointer transition-colors',
                                                 form.platforms.includes(platform.id)
                                                     ? 'border-primary-500 dark:border-primary-400 bg-primary-50 dark:bg-primary-900/30'
                                                     : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
@@ -270,117 +410,59 @@ onMounted(() => {
                                                 class="sr-only"
                                             />
                                             <span
-                                                :class="[
-                                                    'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold mr-2',
-                                                    platform.id.startsWith('facebook') ? 'bg-blue-100 text-blue-600' : 'bg-gradient-to-br from-purple-500 to-pink-500 text-white'
-                                                ]"
+                                                class="w-7 h-7 sm:w-8 sm:h-8 shrink-0 rounded-full flex items-center justify-center text-xs font-bold mr-2"
+                                                :style="{
+                                                    backgroundColor: platform.id.startsWith('facebook') ? '#dbeafe' : '#ec4899',
+                                                    color: platform.id.startsWith('facebook') ? '#2563eb' : 'white'
+                                                }"
                                             >
                                                 {{ platform.icon }}
                                             </span>
-                                            <span class="text-sm text-gray-700 dark:text-gray-400">{{ platform.name }}</span>
+                                            <span class="text-xs sm:text-sm text-gray-700 dark:text-gray-400">{{ platform.name }}</span>
                                         </label>
                                     </div>
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Media Section -->
-                        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-                            <div class="flex justify-between items-center mb-4">
-                                <h2 class="text-lg font-medium text-gray-900 dark:text-white">Media</h2>
-                                <button
-                                    @click="showMediaLibrary = true"
-                                    class="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300"
-                                >
-                                    Browse Library
-                                </button>
-                            </div>
-
-                            <div v-if="selectedMedia.length === 0" class="text-center text-gray-500 dark:text-gray-400 py-8">
-                                <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
-                                <p class="mt-2">No media selected</p>
-                                <button
-                                    @click="showMediaLibrary = true"
-                                    class="mt-2 text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300"
-                                >
-                                    Browse media library
-                                </button>
-                            </div>
-
-                            <div v-else class="grid grid-cols-3 gap-2">
-                                <div
-                                    v-for="(media, index) in selectedMedia"
-                                    :key="media.id"
-                                    class="relative aspect-square rounded-lg overflow-hidden group"
-                                >
-                                    <img
-                                        v-if="media.type === 'image'"
-                                        :src="media.thumbnail_url || media.url"
-                                        class="w-full h-full object-cover"
-                                    />
-                                    <video
-                                        v-else
-                                        :src="media.url"
-                                        class="w-full h-full object-cover"
-                                    />
-                                    <button
-                                        @click="removeMedia(index)"
-                                        class="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    >
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                    </button>
-                                    <span class="absolute bottom-1 left-1 bg-black bg-opacity-60 text-white text-xs px-2 py-0.5 rounded">
-                                        {{ index + 1 }}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Actions -->
-                        <div class="flex justify-end gap-3">
-                            <button
-                                @click="router.back()"
-                                class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                @click="saveDraft"
-                                :disabled="!canSubmit || loading"
-                                class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
-                            >
-                                {{ loading ? 'Saving...' : 'Save as Draft' }}
-                            </button>
-                            <button
-                                @click="submitForApproval"
-                                :disabled="!canSubmit || loading"
-                                class="px-4 py-2 bg-primary-600 dark:bg-primary-500 text-white rounded-md hover:bg-primary-700 dark:hover:bg-primary-600 disabled:opacity-50"
-                            >
-                                {{ loading ? 'Submitting...' : 'Submit for Approval' }}
-                            </button>
-                        </div>
                     </div>
 
                     <!-- Preview -->
                     <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-                        <div class="flex justify-between items-center mb-4">
+                        <div class="mb-4">
                             <h2 class="text-lg font-medium text-gray-900 dark:text-white">Preview</h2>
-                            <div v-if="form.platforms.length > 0" class="flex gap-2">
+                            <div v-if="form.platforms.length > 0" class="flex gap-2 flex-wrap mt-3">
                                 <button
                                     v-for="platform in form.platforms"
                                     :key="platform"
                                     @click="previewPlatform = platform"
                                     :class="[
-                                        'px-3 py-1 text-xs rounded-full',
+                                        'px-3 py-1.5 text-xs rounded-full flex items-center gap-1.5 transition-all',
                                         previewPlatform === platform || (!previewPlatform && form.platforms[0] === platform)
-                                            ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
+                                            ? platform.startsWith('facebook')
+                                                ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 ring-2 ring-blue-400'
+                                                : 'bg-pink-100 dark:bg-pink-900/40 text-pink-700 dark:text-pink-300 ring-2 ring-pink-400'
                                             : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
                                     ]"
                                 >
+                                    <span
+                                        :style="{
+                                            width: '20px',
+                                            height: '20px',
+                                            minWidth: '20px',
+                                            minHeight: '20px',
+                                            borderRadius: '50%',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            fontSize: '10px',
+                                            fontWeight: 'bold',
+                                            flexShrink: 0,
+                                            backgroundColor: platform.startsWith('facebook') ? '#3b82f6' : '#ec4899',
+                                            color: 'white'
+                                        }"
+                                    >
+                                        {{ platform.startsWith('facebook') ? 'FB' : 'IG' }}
+                                    </span>
                                     {{ platform.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase()) }}
                                 </button>
                             </div>
@@ -401,10 +483,10 @@ onMounted(() => {
                                     <img :src="selectedBrand.logo_url" :alt="selectedBrand.name" class="w-full h-full object-cover" />
                                 </div>
                                 <div v-else class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
-                                    {{ selectedBrand?.name?.charAt(0) || 'B' }}
+                                    {{ instagramDisplayName.charAt(0) }}
                                 </div>
                                 <div class="ml-3">
-                                    <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ selectedBrand?.name || 'Brand Name' }}</p>
+                                    <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ instagramDisplayName }}</p>
                                 </div>
                             </div>
                             <!-- Image -->
@@ -432,7 +514,7 @@ onMounted(() => {
                                     </svg>
                                 </div>
                                 <p class="text-sm text-gray-900 dark:text-white">
-                                    <span class="font-semibold">{{ selectedBrand?.name || 'brand' }}</span>
+                                    <span class="font-semibold">{{ instagramDisplayName }}</span>
                                     <span class="whitespace-pre-wrap">{{ truncatedCaption || ' Your caption here...' }}</span>
                                 </p>
                             </div>
@@ -449,10 +531,10 @@ onMounted(() => {
                                     <img :src="selectedBrand.logo_url" :alt="selectedBrand.name" class="w-full h-full object-cover" />
                                 </div>
                                 <div v-else class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">
-                                    {{ selectedBrand?.name?.charAt(0) || 'B' }}
+                                    {{ facebookDisplayName.charAt(0) }}
                                 </div>
                                 <div class="ml-3">
-                                    <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ selectedBrand?.name || 'Brand Name' }}</p>
+                                    <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ facebookDisplayName }}</p>
                                     <p class="text-xs text-gray-500 dark:text-gray-400">Just now</p>
                                 </div>
                             </div>
@@ -521,10 +603,10 @@ onMounted(() => {
                                             <img :src="selectedBrand.logo_url" :alt="selectedBrand.name" class="w-full h-full object-cover" />
                                         </div>
                                         <div v-else class="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold border-2 border-black">
-                                            {{ selectedBrand?.name?.charAt(0) || 'B' }}
+                                            {{ instagramDisplayName.charAt(0) }}
                                         </div>
                                     </div>
-                                    <span class="ml-2 text-white text-sm font-medium">{{ selectedBrand?.name || 'Brand' }}</span>
+                                    <span class="ml-2 text-white text-sm font-medium">{{ instagramDisplayName }}</span>
                                     <span class="ml-1 text-white/60 text-xs">2h</span>
                                 </div>
                                 <div class="flex items-center gap-3">
@@ -605,9 +687,9 @@ onMounted(() => {
                                         <img :src="selectedBrand.logo_url" :alt="selectedBrand.name" class="w-full h-full object-cover" />
                                     </div>
                                     <div v-else class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
-                                        {{ selectedBrand?.name?.charAt(0) || 'B' }}
+                                        {{ instagramDisplayName.charAt(0) }}
                                     </div>
-                                    <span class="ml-2 text-white text-sm font-semibold">{{ selectedBrand?.name || 'Brand' }}</span>
+                                    <span class="ml-2 text-white text-sm font-semibold">{{ instagramDisplayName }}</span>
                                     <button class="ml-2 px-3 py-1 border border-white rounded text-white text-xs font-semibold">Follow</button>
                                 </div>
                                 <p class="text-white text-sm line-clamp-2">{{ truncatedCaption || 'Your caption here...' }}</p>
@@ -648,11 +730,11 @@ onMounted(() => {
                                             <img :src="selectedBrand.logo_url" :alt="selectedBrand.name" class="w-full h-full object-cover" />
                                         </div>
                                         <div v-else class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold border-2 border-black">
-                                            {{ selectedBrand?.name?.charAt(0) || 'B' }}
+                                            {{ facebookDisplayName.charAt(0) }}
                                         </div>
                                     </div>
                                     <div class="ml-2">
-                                        <span class="text-white text-sm font-semibold block">{{ selectedBrand?.name || 'Brand' }}</span>
+                                        <span class="text-white text-sm font-semibold block">{{ facebookDisplayName }}</span>
                                         <span class="text-white/60 text-xs">3h ago</span>
                                     </div>
                                 </div>

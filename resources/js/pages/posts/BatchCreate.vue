@@ -2,22 +2,20 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter, useRoute, RouterLink } from 'vue-router';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { collectionApi, brandApi, mediaApi } from '@/services/api';
+import { collectionApi, mediaApi } from '@/services/api';
+import { useBrandStore } from '@/stores/brand';
 
 const router = useRouter();
 const route = useRoute();
+const brandStore = useBrandStore();
 
-const brand = ref(null);
 const brandMedia = ref([]);
 const loading = ref(false);
-const loadingBrand = ref(true);
 const loadingMedia = ref(false);
 const error = ref('');
 
-// Get brand_id from URL - required
-const brandId = computed(() => {
-    return route.query.brand_id ? parseInt(route.query.brand_id) : null;
-});
+// Use the active brand from the global store
+const brand = computed(() => brandStore.activeBrand);
 
 // Collection name
 const collectionName = ref('');
@@ -66,36 +64,27 @@ const truncatedCaption = computed(() => {
     return selectedPost.value.caption.substring(0, 125) + '...';
 });
 
-const fetchBrand = async () => {
-    if (!brandId.value) {
+// Check brand and fetch media on mount
+const initPage = () => {
+    if (!brandStore.activeBrand) {
+        // No active brand - redirect to brands page
         router.push('/brands');
         return;
     }
 
-    try {
-        loadingBrand.value = true;
-        const response = await brandApi.get(brandId.value);
-        brand.value = response.data.brand || response.data.data || response.data;
-        localStorage.setItem('last_selected_brand_id', brand.value.id.toString());
-        fetchBrandMedia();
-    } catch (err) {
-        console.error('Failed to fetch brand:', err);
-        error.value = 'Brand not found or you do not have access';
-        setTimeout(() => router.push('/brands'), 2000);
-    } finally {
-        loadingBrand.value = false;
-    }
+    // Fetch media for this brand
+    fetchBrandMedia();
 };
 
 const fetchBrandMedia = async () => {
-    if (!brandId.value) {
+    if (!brandStore.activeBrandId) {
         brandMedia.value = [];
         return;
     }
 
     try {
         loadingMedia.value = true;
-        const response = await mediaApi.list({ brand_id: brandId.value });
+        const response = await mediaApi.list({ brand_id: brandStore.activeBrandId });
         brandMedia.value = response.data.data || response.data || [];
     } catch (err) {
         console.error('Failed to fetch media:', err);
@@ -184,7 +173,7 @@ const saveDrafts = async () => {
 
         // Create collection with all posts
         const response = await collectionApi.create({
-            brand_id: brandId.value,
+            brand_id: brandStore.activeBrandId,
             name: getCollectionName(),
             posts: posts.value.map(post => ({
                 title: post.title,
@@ -212,7 +201,7 @@ const submitForApproval = async () => {
 
         // Create collection with all posts
         const createResponse = await collectionApi.create({
-            brand_id: brandId.value,
+            brand_id: brandStore.activeBrandId,
             name: getCollectionName(),
             posts: posts.value.map(post => ({
                 title: post.title,
@@ -247,12 +236,22 @@ const goToCollection = () => {
     if (createdCollection.value?.id) {
         router.push(`/collections/${createdCollection.value.id}`);
     } else {
-        router.push(`/posts?brand_id=${brandId.value}`);
+        router.push('/posts');
     }
 };
 
+// Watch for brand changes in the store
+watch(() => brandStore.activeBrandId, (newVal, oldVal) => {
+    if (newVal && newVal !== oldVal) {
+        // Clear posts when brand changes
+        posts.value = [];
+        selectedPostIndex.value = 0;
+        fetchBrandMedia();
+    }
+});
+
 onMounted(() => {
-    fetchBrand();
+    initPage();
 });
 </script>
 
@@ -262,11 +261,11 @@ onMounted(() => {
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-4">
-                        <RouterLink :to="`/brands/${brandId}`" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <button @click="router.back()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                             </svg>
-                        </RouterLink>
+                        </button>
                         <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Batch Create</h1>
                         <span v-if="posts.length > 0" class="text-sm text-gray-500 dark:text-gray-400">
                             {{ posts.length }} post{{ posts.length !== 1 ? 's' : '' }}
@@ -296,13 +295,7 @@ onMounted(() => {
                     {{ error }}
                 </div>
 
-                <!-- Loading state -->
-                <div v-if="loadingBrand" class="text-center py-12">
-                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
-                    <p class="mt-2 text-gray-500 dark:text-gray-400">Loading brand...</p>
-                </div>
-
-                <div v-else-if="brand" class="space-y-6">
+                <div v-if="brand" class="space-y-6">
                     <!-- Collection Name -->
                     <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
                         <h2 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Collection Details</h2>
@@ -374,7 +367,7 @@ onMounted(() => {
                         </div>
                         <div v-else-if="brandMedia.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
                             No media uploaded for this brand yet.
-                            <RouterLink :to="`/media?brand_id=${brandId}`" class="block mt-2 text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300">
+                            <RouterLink to="/media" class="block mt-2 text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300">
                                 Go to Media Library to upload
                             </RouterLink>
                         </div>
@@ -754,12 +747,12 @@ onMounted(() => {
 
                     <!-- Actions -->
                     <div class="flex justify-end gap-3">
-                        <RouterLink
-                            :to="`/brands/${brandId}`"
+                        <button
+                            @click="router.back()"
                             class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
                         >
                             Cancel
-                        </RouterLink>
+                        </button>
                         <button
                             @click="saveDrafts"
                             :disabled="!canSubmit || loading"
@@ -829,10 +822,10 @@ onMounted(() => {
                                 View Collection
                             </button>
                             <RouterLink
-                                :to="`/brands/${brandId}`"
+                                to="/posts"
                                 class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                             >
-                                Back to Brand
+                                Back to Posts
                             </RouterLink>
                         </div>
                     </div>

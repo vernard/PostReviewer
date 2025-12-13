@@ -101,47 +101,6 @@ const clearPreview = () => {
 const mockupRef = ref(null);
 const exporting = ref(false);
 
-// Email subscription
-const subscribeEmail = ref('');
-const subscribing = ref(false);
-const subscribeSuccess = ref(false);
-const subscribeError = ref('');
-
-const subscribeToNewsletter = async () => {
-    if (!subscribeEmail.value || subscribing.value) return;
-
-    const subscribeUrl = import.meta.env.VITE_EMAILIT_SUBSCRIBE_URL;
-    if (!subscribeUrl) {
-        subscribeError.value = 'Email subscription is not configured.';
-        return;
-    }
-
-    subscribing.value = true;
-    subscribeError.value = '';
-
-    try {
-        const response = await fetch(subscribeUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ email: subscribeEmail.value }),
-        });
-
-        if (response.ok) {
-            subscribeSuccess.value = true;
-            subscribeEmail.value = '';
-        } else {
-            const data = await response.json();
-            subscribeError.value = data.message || 'Failed to subscribe. Please try again.';
-        }
-    } catch (err) {
-        subscribeError.value = 'Failed to subscribe. Please try again.';
-    } finally {
-        subscribing.value = false;
-    }
-};
-
 const exportAsJpeg = async () => {
     if (exporting.value) return;
 
@@ -184,8 +143,9 @@ const exportAsJpeg = async () => {
         <nav class="bg-white dark:bg-gray-800 shadow dark:shadow-gray-700/30">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between items-center h-16">
-                    <div class="flex items-center min-w-0">
-                        <span class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white truncate">Post Reviewer</span>
+                    <div class="flex items-center shrink-0">
+                        <img src="/images/post-reviewer-logo.svg" alt="Post Reviewer" class="h-9 sm:h-10 shrink-0 dark:hidden" />
+                        <img src="/images/post-reviewer-logo-dark.svg" alt="Post Reviewer" class="h-9 sm:h-10 shrink-0 hidden dark:block" />
                     </div>
                     <div class="flex items-center space-x-2 sm:space-x-4">
                         <button
@@ -231,12 +191,12 @@ const exportAsJpeg = async () => {
         <main class="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
             <div class="text-center">
                 <h1 class="text-4xl font-extrabold text-gray-900 dark:text-white sm:text-5xl md:text-6xl">
-                    Preview Your Social Media Posts
-                    <span class="block text-primary-600 dark:text-primary-500">Before You Publish</span>
+                    Client Approvals,
+                    <span class="block text-primary-600 dark:text-primary-500">Made Simple</span>
                 </h1>
                 <p class="mt-3 max-w-md mx-auto text-base text-gray-500 dark:text-gray-400 sm:text-lg md:mt-5 md:text-xl md:max-w-3xl">
-                    Create pixel-perfect mockups of your Facebook and Instagram posts.
-                    Get team approval before going live. Perfect for agencies and brands.
+                    Make client approvals effortless. Post Reviewer helps agencies and freelancers
+                    get faster sign-offs with realistic mockups and streamlined feedback.
                 </p>
                 <div class="mt-10 flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
                     <RouterLink
@@ -389,10 +349,10 @@ const exportAsJpeg = async () => {
                     </div>
 
                     <!-- Preview Section -->
-                    <div class="w-full overflow-x-auto">
-                        <div class="bg-gray-100 dark:bg-gray-700 rounded-lg p-2 sm:p-4 min-h-[400px] flex items-center justify-center">
-                            <!-- Mockup Container -->
-                            <div ref="mockupRef">
+                    <div class="w-[calc(100%+2rem)] -mx-4 sm:w-full sm:mx-0">
+                        <div class="bg-gray-100 dark:bg-gray-700 rounded-none sm:rounded-lg p-2 sm:p-4 flex items-center justify-center">
+                            <!-- Mockup Container - scales down on very small screens -->
+                            <div ref="mockupRef" class="max-[400px]:scale-90">
                             <!-- Instagram Mockup -->
                             <div v-if="selectedPlatform === 'instagram'" class="bg-white rounded-lg shadow-lg w-full max-w-[350px] sm:max-w-[375px]">
                                 <!-- Header -->
@@ -602,70 +562,62 @@ const exportAsJpeg = async () => {
                     </RouterLink>
                 </div>
 
-                <!-- Email Subscription Section -->
+                <!-- Discord Section -->
                 <div class="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
                     <div class="text-center">
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Get Notified When We Launch</h3>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Join Our Community</h3>
                         <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                            We're still in beta. Subscribe to be notified when we're fully live.
+                            We're still in beta. Join our Discord to get updates and share feedback.
                         </p>
-                        <div v-if="!subscribeSuccess" class="mt-4 flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto">
-                            <input
-                                v-model="subscribeEmail"
-                                type="email"
-                                placeholder="Enter your email"
-                                class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                                @keyup.enter="subscribeToNewsletter"
-                            />
-                            <button
-                                @click="subscribeToNewsletter"
-                                :disabled="subscribing || !subscribeEmail"
-                                class="px-6 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                            >
-                                {{ subscribing ? 'Subscribing...' : 'Notify Me' }}
-                            </button>
-                        </div>
-                        <p v-if="subscribeError" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ subscribeError }}</p>
-                        <p v-if="subscribeSuccess" class="mt-4 text-sm text-green-600 dark:text-green-400 font-medium">
-                            Thanks! We'll notify you when we launch.
-                        </p>
+                        <a
+                            href="https://discord.gg/9RQWcmZdzR"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="mt-4 inline-flex items-center gap-2 px-6 py-2 bg-[#5865F2] text-white rounded-md hover:bg-[#4752C4] transition-colors"
+                        >
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+                            </svg>
+                            Join Discord
+                        </a>
                     </div>
                 </div>
             </div>
 
             <div id="features" class="mt-24">
+                <h2 class="text-3xl font-bold text-gray-900 dark:text-white text-center mb-12">Who It's For</h2>
                 <div class="grid grid-cols-1 gap-8 md:grid-cols-3">
-                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow dark:shadow-gray-900/30">
-                        <div class="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center mb-4">
-                            <svg class="w-6 h-6 text-primary-600 dark:text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                        </div>
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Realistic Mockups</h3>
-                        <p class="mt-2 text-gray-600 dark:text-gray-400">
-                            See exactly how your posts will look on Facebook and Instagram before publishing.
-                        </p>
-                    </div>
-                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow dark:shadow-gray-900/30">
-                        <div class="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center mb-4">
-                            <svg class="w-6 h-6 text-primary-600 dark:text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                        </div>
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Team Approvals</h3>
-                        <p class="mt-2 text-gray-600 dark:text-gray-400">
-                            Streamlined approval workflow for your team. Comment, request changes, and approve.
-                        </p>
-                    </div>
                     <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow dark:shadow-gray-900/30">
                         <div class="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center mb-4">
                             <svg class="w-6 h-6 text-primary-600 dark:text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                             </svg>
                         </div>
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Multi-Brand Support</h3>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Marketing Agencies</h3>
                         <p class="mt-2 text-gray-600 dark:text-gray-400">
-                            Manage multiple brands and clients from a single dashboard. Perfect for agencies.
+                            Teams managing multiple client accounts who need streamlined approval workflows.
+                        </p>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow dark:shadow-gray-900/30">
+                        <div class="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center mb-4">
+                            <svg class="w-6 h-6 text-primary-600 dark:text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Freelance Creators</h3>
+                        <p class="mt-2 text-gray-600 dark:text-gray-400">
+                            Social media managers and content creators seeking professional client interactions.
+                        </p>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow dark:shadow-gray-900/30">
+                        <div class="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center mb-4">
+                            <svg class="w-6 h-6 text-primary-600 dark:text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">In-House Teams</h3>
+                        <p class="mt-2 text-gray-600 dark:text-gray-400">
+                            Brand teams coordinating with external stakeholders on content approval.
                         </p>
                     </div>
                 </div>

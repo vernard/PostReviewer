@@ -1,11 +1,13 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { agencyApi, userApi } from '@/services/api';
 import { useAuthStore } from '@/stores/auth';
 
+const route = useRoute();
 const authStore = useAuthStore();
-const activeTab = ref('profile');
+const activeTab = ref(route.meta.defaultTab || 'profile');
 
 const tabs = [
     { id: 'profile', name: 'Profile' },

@@ -1,34 +1,31 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { mediaApi, brandApi } from '@/services/api';
+import { mediaApi } from '@/services/api';
+import { useBrandStore } from '@/stores/brand';
+
+const brandStore = useBrandStore();
 
 const media = ref([]);
-const brands = ref([]);
 const loading = ref(true);
 const uploading = ref(false);
 const uploadProgress = ref(0);
 
+// Use brands from the global store
+const brands = computed(() => brandStore.brands);
+
+// Use active brand as default filter
 const filters = ref({
-    brand_id: '',
+    brand_id: brandStore.activeBrandId || '',
     type: '',
     search: '',
 });
 
 const showUploadModal = ref(false);
 const uploadForm = ref({
-    brand_id: '',
+    brand_id: brandStore.activeBrandId || '',
     files: [],
 });
-
-const fetchBrands = async () => {
-    try {
-        const response = await brandApi.list();
-        brands.value = response.data.brands || response.data.data || response.data;
-    } catch (err) {
-        console.error('Failed to fetch brands:', err);
-    }
-};
 
 const fetchMedia = async () => {
     try {
@@ -122,8 +119,15 @@ watch(filters, () => {
     fetchMedia();
 }, { deep: true });
 
+// Sync filter when active brand changes in the store
+watch(() => brandStore.activeBrandId, (newBrandId) => {
+    if (newBrandId && filters.value.brand_id !== newBrandId) {
+        filters.value.brand_id = newBrandId;
+        uploadForm.value.brand_id = newBrandId;
+    }
+});
+
 onMounted(() => {
-    fetchBrands();
     fetchMedia();
 });
 </script>

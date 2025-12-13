@@ -1,31 +1,27 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, computed } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { postApi, brandApi } from '@/services/api';
+import { postApi } from '@/services/api';
+import { useBrandStore } from '@/stores/brand';
 
 const route = useRoute();
+const brandStore = useBrandStore();
 
 const posts = ref([]);
-const brands = ref([]);
 const loading = ref(true);
 const pagination = ref({});
 
+// Use active brand from store as default filter, or query param if provided
 const filters = ref({
-    brand_id: route.query.brand_id || '',
+    brand_id: route.query.brand_id || brandStore.activeBrandId || '',
     status: route.query.status || '',
     platform: '',
     mine: false,
 });
 
-const fetchBrands = async () => {
-    try {
-        const response = await brandApi.list();
-        brands.value = response.data.brands || response.data.data || response.data;
-    } catch (err) {
-        console.error('Failed to fetch brands:', err);
-    }
-};
+// Use brands from the global store
+const brands = computed(() => brandStore.brands);
 
 const fetchPosts = async (page = 1) => {
     try {
@@ -103,8 +99,14 @@ watch(filters, () => {
     fetchPosts();
 }, { deep: true });
 
+// Sync filter when active brand changes in the store
+watch(() => brandStore.activeBrandId, (newBrandId) => {
+    if (newBrandId && filters.value.brand_id !== newBrandId) {
+        filters.value.brand_id = newBrandId;
+    }
+});
+
 onMounted(() => {
-    fetchBrands();
     fetchPosts();
 });
 </script>
@@ -115,15 +117,23 @@ onMounted(() => {
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between items-center">
                     <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Posts</h1>
-                    <RouterLink
-                        to="/posts/create"
-                        class="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 flex items-center gap-2"
-                    >
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                        </svg>
-                        Create Post
-                    </RouterLink>
+                    <div class="flex items-center gap-3">
+                        <RouterLink
+                            to="/posts/create"
+                            class="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 text-sm font-medium"
+                        >
+                            + Single Post
+                        </RouterLink>
+                        <RouterLink
+                            to="/posts/batch-create"
+                            class="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 flex items-center gap-2"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                            </svg>
+                            Batch Create
+                        </RouterLink>
+                    </div>
                 </div>
             </div>
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
@@ -200,12 +210,20 @@ onMounted(() => {
                             ? 'Try adjusting your filters.'
                             : 'Get started by creating your first post.' }}
                     </p>
-                    <RouterLink
-                        to="/posts/create"
-                        class="mt-4 inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600"
-                    >
-                        Create Post
-                    </RouterLink>
+                    <div class="mt-4 flex items-center justify-center gap-3">
+                        <RouterLink
+                            to="/posts/create"
+                            class="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 text-sm font-medium"
+                        >
+                            + Single Post
+                        </RouterLink>
+                        <RouterLink
+                            to="/posts/batch-create"
+                            class="inline-flex items-center gap-2 px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600"
+                        >
+                            Batch Create
+                        </RouterLink>
+                    </div>
                 </div>
 
                 <!-- Posts Grid -->

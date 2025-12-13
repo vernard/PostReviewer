@@ -10,7 +10,10 @@ const currentYear = new Date().getFullYear();
             <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
                 <!-- Brand -->
                 <div class="col-span-1 md:col-span-2">
-                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Post Reviewer</h3>
+                    <div class="mb-4">
+                        <img src="/images/post-reviewer-logo.svg" alt="Post Reviewer" class="h-10 shrink-0 dark:hidden" />
+                        <img src="/images/post-reviewer-logo-dark.svg" alt="Post Reviewer" class="h-10 shrink-0 hidden dark:block" />
+                    </div>
                     <p class="text-gray-500 dark:text-gray-400 mb-4 max-w-md">
                         Create stunning social media mockups and streamline your approval workflow.
                         Perfect for agencies, brands, and marketing teams.

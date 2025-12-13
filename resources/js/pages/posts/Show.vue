@@ -254,7 +254,10 @@ onMounted(fetchPost);
                                     class="max-w-sm mx-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden"
                                 >
                                     <div class="flex items-center p-3">
-                                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
+                                        <div v-if="post.brand?.logo_url" class="w-8 h-8 rounded-full overflow-hidden">
+                                            <img :src="post.brand.logo_url" :alt="post.brand.name" class="w-full h-full object-cover" />
+                                        </div>
+                                        <div v-else class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
                                             {{ post.brand?.name?.charAt(0) || 'B' }}
                                         </div>
                                         <div class="ml-3">
@@ -298,7 +301,10 @@ onMounted(fetchPost);
                                     class="max-w-sm mx-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden"
                                 >
                                     <div class="flex items-center p-3">
-                                        <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">
+                                        <div v-if="post.brand?.logo_url" class="w-10 h-10 rounded-full overflow-hidden">
+                                            <img :src="post.brand.logo_url" :alt="post.brand.name" class="w-full h-full object-cover" />
+                                        </div>
+                                        <div v-else class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">
                                             {{ post.brand?.name?.charAt(0) || 'B' }}
                                         </div>
                                         <div class="ml-3">
@@ -336,7 +342,10 @@ onMounted(fetchPost);
                                     />
                                     <div class="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/50 to-transparent">
                                         <div class="flex items-center">
-                                            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
+                                            <div v-if="post.brand?.logo_url" class="w-8 h-8 rounded-full overflow-hidden">
+                                                <img :src="post.brand.logo_url" :alt="post.brand.name" class="w-full h-full object-cover" />
+                                            </div>
+                                            <div v-else class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
                                                 {{ post.brand?.name?.charAt(0) || 'B' }}
                                             </div>
                                             <span class="ml-2 text-white text-sm font-medium">{{ post.brand?.name }}</span>

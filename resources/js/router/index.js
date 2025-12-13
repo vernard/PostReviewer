@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
+import { useBrandStore } from '@/stores/brand';
 
 const routes = [
     {
@@ -39,7 +40,7 @@ const routes = [
         path: '/dashboard',
         name: 'dashboard',
         component: () => import('@/pages/Dashboard.vue'),
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, requiresBrand: true },
     },
     {
         path: '/brands',
@@ -57,19 +58,19 @@ const routes = [
         path: '/posts',
         name: 'posts',
         component: () => import('@/pages/posts/Index.vue'),
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, requiresBrand: true },
     },
     {
         path: '/posts/create',
         name: 'posts.create',
         component: () => import('@/pages/posts/Create.vue'),
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, requiresBrand: true },
     },
     {
         path: '/posts/batch-create',
         name: 'posts.batch-create',
         component: () => import('@/pages/posts/BatchCreate.vue'),
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, requiresBrand: true },
     },
     {
         path: '/posts/:id',
@@ -87,7 +88,7 @@ const routes = [
         path: '/collections',
         name: 'collections',
         component: () => import('@/pages/collections/Index.vue'),
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, requiresBrand: true },
     },
     {
         path: '/collections/:id',
@@ -105,13 +106,19 @@ const routes = [
         path: '/media',
         name: 'media',
         component: () => import('@/pages/media/Index.vue'),
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, requiresBrand: true },
     },
     {
         path: '/settings',
         name: 'settings',
         component: () => import('@/pages/settings/Index.vue'),
         meta: { requiresAuth: true },
+    },
+    {
+        path: '/settings/team',
+        name: 'settings.team',
+        component: () => import('@/pages/settings/Index.vue'),
+        meta: { requiresAuth: true, defaultTab: 'team' },
     },
     {
         path: '/review/:token',
@@ -157,6 +164,20 @@ router.beforeEach(async (to, from, next) => {
     // Route is for guests only but user is authenticated
     if (to.meta.guest && isAuthenticated) {
         return next({ name: 'dashboard' });
+    }
+
+    // Route requires a brand but no brand is selected
+    if (to.meta.requiresBrand && isAuthenticated) {
+        const brandStore = useBrandStore();
+        // Wait for brands to be loaded if not initialized
+        if (!brandStore.initialized && brandStore.brands.length === 0) {
+            // Brands should already be loaded from auth store init
+            // But if not, the component will handle redirect
+        }
+        // If no active brand, redirect to brands page
+        if (!brandStore.activeBrand && brandStore.hasBrands === false) {
+            return next({ name: 'brands' });
+        }
     }
 
     // Redirect home to dashboard if authenticated
