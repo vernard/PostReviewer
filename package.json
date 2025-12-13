@@ -4,7 +4,11 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite --host"
+        "dev": "vite --host",
+        "test:e2e": "playwright test",
+        "test:e2e:ui": "playwright test --ui",
+        "test:e2e:headed": "playwright test --headed",
+        "test:e2e:debug": "playwright test --debug"
     },
     "dependencies": {
         "@sentry/vue": "^10.30.0",
@@ -17,6 +21,7 @@
         "vue-router": "^4.5.0"
     },
     "devDependencies": {
+        "@playwright/test": "^1.57.0",
         "@tailwindcss/vite": "^4.0.0",
         "@vitejs/plugin-vue": "^6.0.2",
         "axios": "^1.11.0",
