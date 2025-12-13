@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,6 +22,32 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        $this->configureRateLimiting();
+    }
+
+    /**
+     * Configure rate limiting for the application.
+     */
+    protected function configureRateLimiting(): void
+    {
+        // Login: 5 attempts per minute per IP
+        RateLimiter::for('login', function (Request $request) {
+            return Limit::perMinute(5)->by($request->ip());
+        });
+
+        // Registration: 3 attempts per minute per IP
+        RateLimiter::for('register', function (Request $request) {
+            return Limit::perMinute(3)->by($request->ip());
+        });
+
+        // Invitation acceptance: 5 attempts per minute per IP
+        RateLimiter::for('invitation', function (Request $request) {
+            return Limit::perMinute(5)->by($request->ip());
+        });
+
+        // Public approval: 10 requests per minute per IP
+        RateLimiter::for('public-approval', function (Request $request) {
+            return Limit::perMinute(10)->by($request->ip());
+        });
     }
 }
