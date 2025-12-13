@@ -2,9 +2,11 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter, useRoute, RouterLink } from 'vue-router';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { postApi, mediaApi } from '@/services/api';
+import { postApi, mediaApi, brandApi } from '@/services/api';
 import { useBrandStore } from '@/stores/brand';
+import axios from 'axios';
 import { validatePost, getCaptionStatus, PLATFORM_LIMITS } from '@/utils/platformValidation';
+import { extractEdgeColor } from '@/composables/useEdgeColor';
 
 const router = useRouter();
 const route = useRoute();
@@ -37,6 +39,13 @@ const showBrandDropdown = ref(false);
 const previewPlatform = ref('');
 const videoPreview = ref(null); // Media item being previewed
 const isPlayingVideo = ref(false); // Whether video is playing inline in mockup
+const mediaEdgeColor = ref('rgb(0, 0, 0)'); // Dynamic background for letterboxing
+
+// Submit for approval modal state
+const showSubmitModal = ref(false);
+const reviewerEmails = ref('');
+const saveReviewersAsDefault = ref(false);
+const loadingDefaults = ref(false);
 
 const platforms = [
     { id: 'facebook_feed', name: 'Facebook Feed', icon: 'FB' },
@@ -90,9 +99,28 @@ watch(() => form.value.platforms, (newPlatforms) => {
     }
 }, { deep: true });
 
-// Reset video playback when media changes
-watch(selectedMedia, () => {
+// Reset video playback when switching preview platforms
+watch(previewPlatform, () => {
     isPlayingVideo.value = false;
+});
+
+// Reset video playback and extract edge color when media changes
+watch(selectedMedia, async () => {
+    isPlayingVideo.value = false;
+
+    // Extract edge color for letterboxing
+    const media = selectedMedia.value[0];
+    if (media) {
+        // Use thumbnail for videos, URL for images
+        const colorUrl = media.thumbnail_url || media.url;
+        if (colorUrl) {
+            mediaEdgeColor.value = await extractEdgeColor(colorUrl);
+        } else {
+            mediaEdgeColor.value = 'rgb(0, 0, 0)';
+        }
+    } else {
+        mediaEdgeColor.value = 'rgb(0, 0, 0)';
+    }
 }, { deep: true });
 
 // Echo channel for real-time updates
@@ -362,12 +390,51 @@ const saveDraft = async () => {
     }
 };
 
+const openSubmitModal = async () => {
+    if (!canSubmit.value) return;
+
+    reviewerEmails.value = '';
+    saveReviewersAsDefault.value = false;
+
+    // Fetch default reviewers
+    if (brandStore.activeBrandId) {
+        try {
+            loadingDefaults.value = true;
+            const response = await axios.get(`/api/brands/${brandStore.activeBrandId}/default-reviewers`);
+            const defaults = response.data.default_reviewers || [];
+            if (defaults.length > 0) {
+                reviewerEmails.value = defaults.join(', ');
+            }
+        } catch (err) {
+            // Silently fail - defaults are optional
+        } finally {
+            loadingDefaults.value = false;
+        }
+    }
+
+    showSubmitModal.value = true;
+};
+
+const parseEmails = (input) => {
+    return input
+        .split(/[,\n]+/)
+        .map(e => e.trim().toLowerCase())
+        .filter(e => e && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+};
+
 const submitForApproval = async () => {
     if (!canSubmit.value) return;
+
+    const emails = parseEmails(reviewerEmails.value);
+    if (emails.length > 10) {
+        error.value = 'Maximum 10 reviewer emails allowed.';
+        return;
+    }
 
     try {
         loading.value = true;
         error.value = '';
+        showSubmitModal.value = false;
 
         // First create the post
         const createResponse = await postApi.create({
@@ -375,8 +442,11 @@ const submitForApproval = async () => {
             media_ids: selectedMedia.value.map(m => m.id),
         });
 
-        // Then submit for approval
-        await postApi.submitForApproval(createResponse.data.post.id);
+        // Then submit for approval with reviewer emails
+        await axios.post(`/api/posts/${createResponse.data.post.id}/submit`, {
+            reviewer_emails: emails.length > 0 ? emails : undefined,
+            save_reviewers_as_default: saveReviewersAsDefault.value && emails.length > 0,
+        });
 
         router.push(`/posts/${createResponse.data.post.id}`);
     } catch (err) {
@@ -429,7 +499,7 @@ onUnmounted(() => {
                             <span class="sm:hidden">{{ loading ? '...' : 'Draft' }}</span>
                         </button>
                         <button
-                            @click="submitForApproval"
+                            @click="openSubmitModal"
                             :disabled="!canSubmit || loading"
                             class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm bg-primary-600 dark:bg-primary-500 text-white rounded-md hover:bg-primary-700 dark:hover:bg-primary-600 disabled:opacity-50"
                         >
@@ -739,16 +809,16 @@ onUnmounted(() => {
                                 </div>
                             </div>
                             <!-- Image/Video -->
-                            <div class="aspect-square bg-black relative">
+                            <div class="aspect-square relative transition-colors duration-300" :style="{ backgroundColor: mediaEdgeColor }">
                                 <!-- Processing state -->
                                 <div
                                     v-if="selectedMedia[0]?.status === 'processing'"
                                     class="w-full h-full flex flex-col items-center justify-center"
                                 >
-                                    <svg class="w-12 h-12 text-gray-500 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-12 h-12 text-gray-400 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
                                         <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/>
                                     </svg>
-                                    <span class="text-gray-500 text-sm mt-2">Processing video...</span>
+                                    <span class="text-gray-400 text-sm mt-2">Processing video...</span>
                                 </div>
                                 <!-- Video playing inline -->
                                 <video
@@ -766,7 +836,7 @@ onUnmounted(() => {
                                     :src="selectedMedia[0].thumbnail_url || selectedMedia[0].url"
                                     class="w-full h-full object-cover"
                                 />
-                                <div v-else class="w-full h-full flex items-center justify-center text-gray-400 dark:text-gray-500">
+                                <div v-else class="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500">
                                     No image selected
                                 </div>
                                 <!-- Video play button -->
@@ -825,16 +895,16 @@ onUnmounted(() => {
                                 <p class="text-sm whitespace-pre-wrap text-gray-900 dark:text-white">{{ form.caption || 'Your caption here...' }}</p>
                             </div>
                             <!-- Image/Video -->
-                            <div class="bg-black relative">
+                            <div class="relative transition-colors duration-300" :style="{ backgroundColor: mediaEdgeColor }">
                                 <!-- Processing state -->
                                 <div
                                     v-if="selectedMedia[0]?.status === 'processing'"
                                     class="aspect-video flex flex-col items-center justify-center"
                                 >
-                                    <svg class="w-12 h-12 text-gray-500 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-12 h-12 text-gray-400 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
                                         <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/>
                                     </svg>
-                                    <span class="text-gray-500 text-sm mt-2">Processing video...</span>
+                                    <span class="text-gray-400 text-sm mt-2">Processing video...</span>
                                 </div>
                                 <!-- Video playing inline -->
                                 <video
@@ -852,7 +922,7 @@ onUnmounted(() => {
                                     :src="selectedMedia[0].thumbnail_url || selectedMedia[0].url"
                                     class="w-full"
                                 />
-                                <div v-else class="aspect-video flex items-center justify-center text-gray-400 dark:text-gray-500">
+                                <div v-else class="aspect-video flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500">
                                     No image selected
                                 </div>
                                 <!-- Video play button -->
@@ -894,17 +964,18 @@ onUnmounted(() => {
                         <!-- Instagram Story Preview -->
                         <div
                             v-else-if="previewPlatform === 'instagram_story'"
-                            class="max-w-[280px] mx-auto bg-black rounded-2xl overflow-hidden aspect-[9/16] relative"
+                            class="max-w-[280px] mx-auto rounded-2xl overflow-hidden aspect-[9/16] relative transition-colors duration-300"
+                            :style="{ backgroundColor: mediaEdgeColor }"
                         >
                             <!-- Processing state -->
                             <div
                                 v-if="selectedMedia[0]?.status === 'processing'"
                                 class="w-full h-full flex flex-col items-center justify-center"
                             >
-                                <svg class="w-12 h-12 text-gray-500 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-12 h-12 text-gray-400 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
                                     <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/>
                                 </svg>
-                                <span class="text-gray-500 text-sm mt-2">Processing video...</span>
+                                <span class="text-gray-400 text-sm mt-2">Processing video...</span>
                             </div>
                             <!-- Video playing inline -->
                             <video
@@ -985,17 +1056,18 @@ onUnmounted(() => {
                         <!-- Instagram Reel Preview -->
                         <div
                             v-else-if="previewPlatform === 'instagram_reel'"
-                            class="max-w-[280px] mx-auto bg-black rounded-2xl overflow-hidden aspect-[9/16] relative"
+                            class="max-w-[280px] mx-auto rounded-2xl overflow-hidden aspect-[9/16] relative transition-colors duration-300"
+                            :style="{ backgroundColor: mediaEdgeColor }"
                         >
                             <!-- Processing state -->
                             <div
                                 v-if="selectedMedia[0]?.status === 'processing'"
                                 class="w-full h-full flex flex-col items-center justify-center"
                             >
-                                <svg class="w-12 h-12 text-gray-500 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-12 h-12 text-gray-400 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
                                     <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/>
                                 </svg>
-                                <span class="text-gray-500 text-sm mt-2">Processing video...</span>
+                                <span class="text-gray-400 text-sm mt-2">Processing video...</span>
                             </div>
                             <!-- Video playing inline -->
                             <video
@@ -1087,17 +1159,18 @@ onUnmounted(() => {
                         <!-- Facebook Story Preview -->
                         <div
                             v-else-if="previewPlatform === 'facebook_story'"
-                            class="max-w-[280px] mx-auto bg-gray-900 rounded-2xl overflow-hidden aspect-[9/16] relative"
+                            class="max-w-[280px] mx-auto rounded-2xl overflow-hidden aspect-[9/16] relative transition-colors duration-300"
+                            :style="{ backgroundColor: mediaEdgeColor }"
                         >
                             <!-- Processing state -->
                             <div
                                 v-if="selectedMedia[0]?.status === 'processing'"
                                 class="w-full h-full flex flex-col items-center justify-center"
                             >
-                                <svg class="w-12 h-12 text-gray-500 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-12 h-12 text-gray-400 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
                                     <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/>
                                 </svg>
-                                <span class="text-gray-500 text-sm mt-2">Processing video...</span>
+                                <span class="text-gray-400 text-sm mt-2">Processing video...</span>
                             </div>
                             <!-- Video playing inline -->
                             <video
@@ -1442,5 +1515,74 @@ onUnmounted(() => {
                 </div>
             </div>
         </div>
+
+        <!-- Submit for Approval Modal -->
+        <Teleport to="body">
+            <div
+                v-if="showSubmitModal"
+                class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            >
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md">
+                    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-white">Submit for Approval</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                            Create post and submit for review. Optionally invite external reviewers.
+                        </p>
+                    </div>
+
+                    <div class="px-6 py-4">
+                        <div v-if="loadingDefaults" class="flex items-center justify-center py-4">
+                            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
+                        </div>
+
+                        <div v-else>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                External Reviewer Emails (optional)
+                            </label>
+                            <textarea
+                                v-model="reviewerEmails"
+                                rows="3"
+                                class="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-3 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                placeholder="client@example.com, manager@example.com"
+                            ></textarea>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                Separate multiple emails with commas. They'll receive a link to review and approve.
+                            </p>
+
+                            <label v-if="reviewerEmails.trim()" class="flex items-center gap-2 mt-4 cursor-pointer">
+                                <input
+                                    v-model="saveReviewersAsDefault"
+                                    type="checkbox"
+                                    class="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500"
+                                />
+                                <span class="text-sm text-gray-700 dark:text-gray-300">
+                                    Save as default reviewers for this brand
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="px-6 py-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3 rounded-b-lg">
+                        <button
+                            @click="showSubmitModal = false"
+                            class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            @click="submitForApproval"
+                            :disabled="loading"
+                            class="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                            <svg v-if="loading" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            {{ loading ? 'Submitting...' : 'Submit for Approval' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
     </AppLayout>
 </template>

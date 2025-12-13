@@ -257,4 +257,19 @@ class BrandController extends Controller
             'brand' => $brand->load('users'),
         ]);
     }
+
+    public function getDefaultReviewers(Request $request, Brand $brand): JsonResponse
+    {
+        $user = $request->user();
+
+        if (!$user->hasBrandAccess($brand)) {
+            return response()->json([
+                'message' => 'You do not have access to this brand.',
+            ], 403);
+        }
+
+        return response()->json([
+            'default_reviewers' => $brand->default_reviewers ?? [],
+        ]);
+    }
 }

@@ -26,11 +26,13 @@ class Brand extends Model
         'instagram_handle',
         'facebook_page_name',
         'settings',
+        'default_reviewers',
     ];
 
     protected $casts = [
         'color_scheme' => 'array',
         'settings' => 'array',
+        'default_reviewers' => 'array',
     ];
 
     protected $appends = ['logo_url', 'logo_flat_url'];

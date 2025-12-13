@@ -2,9 +2,10 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter, RouterLink } from 'vue-router';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { postApi, commentApi } from '@/services/api';
+import { postApi, commentApi, brandApi } from '@/services/api';
 import { useAuthStore } from '@/stores/auth';
 import html2canvas from 'html2canvas-pro';
+import axios from 'axios';
 
 const route = useRoute();
 const router = useRouter();
@@ -20,6 +21,14 @@ const showFullCaption = ref(false);
 const newComment = ref('');
 const submittingComment = ref(false);
 
+// Invite reviewers state
+const showInviteModal = ref(false);
+const reviewerEmails = ref('');
+const saveAsDefault = ref(false);
+const sendingInvites = ref(false);
+const inviteError = ref('');
+const inviteSuccess = ref('');
+
 const canManage = computed(() => {
     return authStore.user?.role === 'admin' || authStore.user?.role === 'manager';
 });
@@ -32,6 +41,11 @@ const canEdit = computed(() => {
 const canSubmitForApproval = computed(() => {
     if (!post.value) return false;
     return ['draft', 'changes_requested'].includes(post.value.status) && canEdit.value;
+});
+
+const canInviteReviewers = computed(() => {
+    if (!post.value) return false;
+    return post.value.status === 'pending_approval';
 });
 
 const truncatedCaption = computed(() => {
@@ -88,6 +102,71 @@ const addComment = async () => {
         alert(err.response?.data?.message || 'Failed to add comment');
     } finally {
         submittingComment.value = false;
+    }
+};
+
+const openInviteModal = async () => {
+    inviteError.value = '';
+    inviteSuccess.value = '';
+    reviewerEmails.value = '';
+    saveAsDefault.value = false;
+
+    // Fetch default reviewers for this brand
+    if (post.value?.brand?.id) {
+        try {
+            const response = await axios.get(`/api/brands/${post.value.brand.id}/default-reviewers`);
+            const defaults = response.data.default_reviewers || [];
+            if (defaults.length > 0) {
+                reviewerEmails.value = defaults.join(', ');
+            }
+        } catch (err) {
+            // Silently fail - defaults are optional
+        }
+    }
+
+    showInviteModal.value = true;
+};
+
+const parseEmails = (input) => {
+    return input
+        .split(/[,\n]+/)
+        .map(e => e.trim().toLowerCase())
+        .filter(e => e && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+};
+
+const sendInvites = async () => {
+    const emails = parseEmails(reviewerEmails.value);
+
+    if (emails.length === 0) {
+        inviteError.value = 'Please enter at least one valid email address.';
+        return;
+    }
+
+    if (emails.length > 10) {
+        inviteError.value = 'Maximum 10 reviewer emails allowed.';
+        return;
+    }
+
+    try {
+        sendingInvites.value = true;
+        inviteError.value = '';
+
+        await axios.post(`/api/posts/${postId}/invite-reviewers`, {
+            reviewer_emails: emails,
+            save_as_default: saveAsDefault.value,
+        });
+
+        inviteSuccess.value = `Sent ${emails.length} invitation(s) successfully!`;
+        await fetchPost();
+
+        // Close modal after delay
+        setTimeout(() => {
+            showInviteModal.value = false;
+        }, 1500);
+    } catch (err) {
+        inviteError.value = err.response?.data?.message || 'Failed to send invitations.';
+    } finally {
+        sendingInvites.value = false;
     }
 };
 
@@ -205,6 +284,16 @@ onMounted(fetchPost);
                                 class="px-4 py-2 bg-primary-600 dark:bg-primary-500 text-white rounded-md hover:bg-primary-700 dark:hover:bg-primary-600"
                             >
                                 Submit for Approval
+                            </button>
+                            <button
+                                v-if="canInviteReviewers"
+                                @click="openInviteModal"
+                                class="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 flex items-center gap-2"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                </svg>
+                                Invite Reviewers
                             </button>
                             <RouterLink
                                 v-if="canEdit && post.status !== 'approved'"
@@ -492,5 +581,101 @@ onMounted(fetchPost);
                 </div>
             </div>
         </div>
+
+        <!-- Invite Reviewers Modal -->
+        <Teleport to="body">
+            <div
+                v-if="showInviteModal"
+                class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            >
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md">
+                    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-white">Invite External Reviewers</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                            Send review links to clients or stakeholders via email.
+                        </p>
+                    </div>
+
+                    <div class="px-6 py-4">
+                        <!-- Success message -->
+                        <div v-if="inviteSuccess" class="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                            <p class="text-sm text-green-600 dark:text-green-400">{{ inviteSuccess }}</p>
+                        </div>
+
+                        <!-- Error message -->
+                        <div v-if="inviteError" class="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                            <p class="text-sm text-red-600 dark:text-red-400">{{ inviteError }}</p>
+                        </div>
+
+                        <div v-if="!inviteSuccess">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Reviewer Email Addresses
+                            </label>
+                            <textarea
+                                v-model="reviewerEmails"
+                                rows="3"
+                                class="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-3 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                placeholder="client@example.com, manager@example.com"
+                            ></textarea>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                Separate multiple emails with commas. Max 10.
+                            </p>
+
+                            <label class="flex items-center gap-2 mt-4 cursor-pointer">
+                                <input
+                                    v-model="saveAsDefault"
+                                    type="checkbox"
+                                    class="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500"
+                                />
+                                <span class="text-sm text-gray-700 dark:text-gray-300">
+                                    Save as default reviewers for {{ post?.brand?.name }}
+                                </span>
+                            </label>
+                        </div>
+
+                        <!-- Existing invites info -->
+                        <div v-if="post?.latest_approval_request?.invites?.length" class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                            <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-2">Already Invited</p>
+                            <div class="space-y-1">
+                                <div
+                                    v-for="invite in post.latest_approval_request.invites"
+                                    :key="invite.id"
+                                    class="flex items-center justify-between text-sm"
+                                >
+                                    <span class="text-gray-700 dark:text-gray-300">{{ invite.email }}</span>
+                                    <span
+                                        :class="invite.responded_at ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'"
+                                        class="text-xs"
+                                    >
+                                        {{ invite.responded_at ? 'Responded' : 'Pending' }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="px-6 py-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3 rounded-b-lg">
+                        <button
+                            @click="showInviteModal = false"
+                            class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+                        >
+                            {{ inviteSuccess ? 'Close' : 'Cancel' }}
+                        </button>
+                        <button
+                            v-if="!inviteSuccess"
+                            @click="sendInvites"
+                            :disabled="sendingInvites || !reviewerEmails.trim()"
+                            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                            <svg v-if="sendingInvites" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            {{ sendingInvites ? 'Sending...' : 'Send Invitations' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
     </AppLayout>
 </template>

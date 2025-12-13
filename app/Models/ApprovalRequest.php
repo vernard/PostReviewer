@@ -37,6 +37,11 @@ class ApprovalRequest extends Model
         return $this->hasMany(ApprovalResponse::class);
     }
 
+    public function invites(): HasMany
+    {
+        return $this->hasMany(ApprovalInvite::class);
+    }
+
     public function isPending(): bool
     {
         return $this->status === 'pending';

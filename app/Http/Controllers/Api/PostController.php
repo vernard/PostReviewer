@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Mail\PostSubmittedForApprovalMail;
+use App\Mail\ReviewInviteMail;
+use App\Models\ApprovalInvite;
 use App\Models\ApprovalRequest;
 use App\Models\Brand;
 use App\Models\Media;
@@ -192,8 +194,15 @@ class PostController extends Controller
             ], 422);
         }
 
+        $request->validate([
+            'due_date' => ['nullable', 'date'],
+            'reviewer_emails' => ['nullable', 'array', 'max:10'],
+            'reviewer_emails.*' => ['email', 'max:255'],
+            'save_reviewers_as_default' => ['nullable', 'boolean'],
+        ]);
+
         // Create approval request
-        ApprovalRequest::create([
+        $approvalRequest = ApprovalRequest::create([
             'post_id' => $post->id,
             'requested_by' => $user->id,
             'status' => 'pending',
@@ -202,7 +211,7 @@ class PostController extends Controller
 
         $post->update(['status' => 'pending_approval']);
 
-        // Notify reviewers (managers in the same agency)
+        // Notify internal reviewers (managers in the same agency)
         $reviewers = User::where('agency_id', $user->agency_id)
             ->whereIn('role', ['admin', 'manager', 'reviewer'])
             ->where('id', '!=', $user->id)
@@ -212,9 +221,83 @@ class PostController extends Controller
             Mail::to($reviewer->email)->queue(new PostSubmittedForApprovalMail($post));
         }
 
+        // Send invites to external reviewers
+        $reviewerEmails = $request->reviewer_emails ?? [];
+        foreach ($reviewerEmails as $email) {
+            $invite = ApprovalInvite::create([
+                'approval_request_id' => $approvalRequest->id,
+                'email' => $email,
+            ]);
+            Mail::to($email)->queue(new ReviewInviteMail($invite));
+        }
+
+        // Save reviewer emails as brand default if requested
+        if ($request->boolean('save_reviewers_as_default') && count($reviewerEmails) > 0) {
+            $post->brand->update(['default_reviewers' => $reviewerEmails]);
+        }
+
         return response()->json([
-            'post' => $post->fresh(['brand', 'creator', 'media', 'latestApprovalRequest']),
+            'post' => $post->fresh(['brand', 'creator', 'media', 'latestApprovalRequest.invites']),
             'message' => 'Post submitted for approval.',
+            'invites_sent' => count($reviewerEmails),
+        ]);
+    }
+
+    public function inviteReviewers(Request $request, Post $post): JsonResponse
+    {
+        $user = $request->user();
+
+        if (!$user->hasBrandAccess($post->brand)) {
+            return response()->json([
+                'message' => 'You do not have access to this post.',
+            ], 403);
+        }
+
+        if ($post->status !== 'pending_approval') {
+            return response()->json([
+                'message' => 'Can only invite reviewers for posts pending approval.',
+            ], 422);
+        }
+
+        $request->validate([
+            'reviewer_emails' => ['required', 'array', 'min:1', 'max:10'],
+            'reviewer_emails.*' => ['email', 'max:255'],
+            'save_as_default' => ['nullable', 'boolean'],
+        ]);
+
+        $approvalRequest = $post->latestApprovalRequest;
+        if (!$approvalRequest || !$approvalRequest->isPending()) {
+            return response()->json([
+                'message' => 'No pending approval request found.',
+            ], 422);
+        }
+
+        $invitesSent = 0;
+        foreach ($request->reviewer_emails as $email) {
+            // Check if invite already exists for this email
+            $existing = $approvalRequest->invites()->where('email', $email)->first();
+            if ($existing) {
+                // Resend the existing invite
+                Mail::to($email)->queue(new ReviewInviteMail($existing));
+            } else {
+                // Create new invite
+                $invite = ApprovalInvite::create([
+                    'approval_request_id' => $approvalRequest->id,
+                    'email' => $email,
+                ]);
+                Mail::to($email)->queue(new ReviewInviteMail($invite));
+            }
+            $invitesSent++;
+        }
+
+        // Save as brand default if requested
+        if ($request->boolean('save_as_default')) {
+            $post->brand->update(['default_reviewers' => $request->reviewer_emails]);
+        }
+
+        return response()->json([
+            'message' => "Sent {$invitesSent} review invitation(s).",
+            'invites' => $approvalRequest->fresh('invites')->invites,
         ]);
     }
 
