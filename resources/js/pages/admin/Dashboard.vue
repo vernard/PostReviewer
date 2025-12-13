@@ -38,6 +38,18 @@ const getActivityIcon = (type) => {
     return `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />`;
 };
 
+const getBarHeight = (value, data) => {
+    const max = Math.max(...data.map(d => d.total));
+    if (max === 0) return '4px';
+    const percentage = (value / max) * 100;
+    return `${Math.max(percentage, 4)}%`;
+};
+
+const formatDayLabel = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0);
+};
+
 onMounted(fetchDashboard);
 </script>
 
@@ -185,6 +197,71 @@ onMounted(fetchDashboard);
                                         <span v-for="(count, status) in stats.approvals.by_status" :key="status" class="px-2 py-1 text-xs rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
                                             {{ status }}: {{ count }}
                                         </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Homepage Usage Stats -->
+                    <div v-if="stats.homepage_usage" class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+                        <div class="p-6">
+                            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Homepage Mockup Usage</h3>
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-6 mb-6">
+                                <div>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">Total Usage</p>
+                                    <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ stats.homepage_usage.total.toLocaleString() }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">Today</p>
+                                    <p class="text-2xl font-semibold text-primary-600 dark:text-primary-400">{{ stats.homepage_usage.today.toLocaleString() }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">Unique Visitors</p>
+                                    <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ stats.homepage_usage.unique_visitors.toLocaleString() }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">Converted Users</p>
+                                    <p class="text-2xl font-semibold text-green-600 dark:text-green-400">{{ stats.homepage_usage.converted_users }}</p>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">By Action</p>
+                                    <div class="flex flex-wrap gap-2">
+                                        <span v-for="(count, action) in stats.homepage_usage.by_action" :key="action" class="px-2 py-1 text-xs rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                                            {{ action.replace('_', ' ') }}: {{ count.toLocaleString() }}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Top Platforms</p>
+                                    <div class="flex flex-wrap gap-2">
+                                        <span v-for="(count, platform) in stats.homepage_usage.by_platform" :key="platform" class="px-2 py-1 text-xs rounded-full bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300">
+                                            {{ platform.replace('_', ' ') }}: {{ count.toLocaleString() }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- 7-day chart -->
+                            <div v-if="stats.homepage_usage.daily_usage?.length > 0" class="mt-6">
+                                <p class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Last 7 Days</p>
+                                <div class="flex items-end gap-1 h-24">
+                                    <div
+                                        v-for="day in stats.homepage_usage.daily_usage"
+                                        :key="day.date"
+                                        class="flex-1 bg-primary-500 dark:bg-primary-600 rounded-t hover:bg-primary-600 dark:hover:bg-primary-500 transition-colors group relative"
+                                        :style="{ height: getBarHeight(day.total, stats.homepage_usage.daily_usage) }"
+                                        :title="`${day.date}: ${day.total} total, ${day.unique_visitors} unique`"
+                                    >
+                                        <div class="absolute -top-6 left-1/2 -translate-x-1/2 text-xs text-gray-500 dark:text-gray-400 opacity-0 group-hover:opacity-100 whitespace-nowrap">
+                                            {{ day.total }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex gap-1 mt-1">
+                                    <div v-for="day in stats.homepage_usage.daily_usage" :key="day.date + '-label'" class="flex-1 text-center text-[10px] text-gray-400 dark:text-gray-500">
+                                        {{ formatDayLabel(day.date) }}
                                     </div>
                                 </div>
                             </div>

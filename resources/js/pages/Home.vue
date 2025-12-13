@@ -6,11 +6,37 @@ import { useDarkMode } from '@/composables/useDarkMode';
 import { useAuthStore } from '@/stores/auth';
 import { extractEdgeColor } from '@/composables/useEdgeColor';
 import { validatePost, getCaptionStatus } from '@/utils/platformValidation';
+import { homepageApi } from '@/services/api';
 import html2canvas from 'html2canvas-pro';
 
 const { isDark, toggle: toggleDarkMode } = useDarkMode();
 const authStore = useAuthStore();
 const isAuthenticated = computed(() => authStore.isAuthenticated);
+
+// Usage tracking
+const showSignupPrompt = ref(false);
+const usageCount = ref(0);
+
+const trackUsage = async (action, mediaType = null) => {
+    try {
+        const response = await homepageApi.trackUsage({
+            action,
+            platform: selectedPlatform.value,
+            media_type: mediaType,
+        });
+        usageCount.value = response.data.usage_count;
+        if (response.data.show_signup_prompt && !isAuthenticated.value) {
+            showSignupPrompt.value = true;
+        }
+    } catch (error) {
+        // Silently fail - tracking shouldn't break the user experience
+        console.warn('Failed to track usage:', error);
+    }
+};
+
+const dismissSignupPrompt = () => {
+    showSignupPrompt.value = false;
+};
 
 const selectedFile = ref(null);
 const previewUrl = ref(null);
@@ -119,6 +145,10 @@ const processFile = (file) => {
     previewUrl.value = URL.createObjectURL(file);
     videoThumbnail.value = null;
 
+    // Track file upload
+    const mediaType = file.type.startsWith('video/') ? 'video' : 'image';
+    trackUsage('file_upload', mediaType);
+
     // Detect image dimensions
     if (file.type.startsWith('image/')) {
         const img = new Image();
@@ -206,6 +236,9 @@ const exportAsJpeg = async () => {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+
+        // Track export
+        trackUsage('export', isVideo.value ? 'video' : 'image');
     } catch (err) {
         console.error('Export failed:', err);
         alert('Failed to export mockup: ' + err.message);
@@ -933,56 +966,54 @@ const exportAsJpeg = async () => {
                                         <p class="mt-2 text-sm font-medium opacity-90">Your reel here</p>
                                     </div>
                                 </div>
-                                <!-- Bottom gradient overlay -->
-                                <div class="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/70 to-transparent pointer-events-none"></div>
+                                <!-- Bottom gradient overlay (reduced height) -->
+                                <div class="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/50 to-transparent pointer-events-none"></div>
                                 <!-- Right sidebar actions -->
-                                <div class="absolute right-3 bottom-24 flex flex-col items-center gap-4 drop-shadow-lg">
+                                <div class="absolute right-2 bottom-16 flex flex-col items-center gap-4 drop-shadow-lg">
                                     <div class="flex flex-col items-center">
-                                        <svg class="w-7 h-7 text-white drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg class="w-6 h-6 text-white drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
                                         </svg>
                                         <span class="text-white text-xs mt-1 drop-shadow-md">1.2K</span>
                                     </div>
                                     <div class="flex flex-col items-center">
-                                        <svg class="w-7 h-7 text-white drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                        <svg class="w-6 h-6 text-white drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
                                         </svg>
                                         <span class="text-white text-xs mt-1 drop-shadow-md">48</span>
                                     </div>
                                     <div class="flex flex-col items-center">
-                                        <svg class="w-7 h-7 text-white drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                                        <svg class="w-6 h-6 text-white drop-shadow-md" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8-8-8z" />
                                         </svg>
                                     </div>
                                     <div class="flex flex-col items-center">
-                                        <svg class="w-7 h-7 text-white drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
+                                        <svg class="w-6 h-6 text-white drop-shadow-md" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
                                         </svg>
-                                    </div>
-                                    <div class="w-7 h-7 rounded border-2 border-white overflow-hidden shadow-md">
-                                        <img v-if="brandLogoUrl" :src="brandLogoUrl" class="w-full h-full object-cover" />
-                                        <div v-else class="w-full h-full bg-gradient-to-br from-blue-500 to-blue-600"></div>
                                     </div>
                                 </div>
-                                <!-- Bottom content -->
-                                <div class="absolute bottom-4 left-3 right-14">
-                                    <div class="flex items-center mb-2">
-                                        <div v-if="brandLogoUrl" class="w-8 h-8 rounded-full overflow-hidden">
-                                            <img :src="brandLogoUrl" :alt="displayBrandNameFb" class="w-full h-full object-cover" />
+                                <!-- Bottom content with black bar -->
+                                <div class="absolute bottom-3 left-2 right-12">
+                                    <div class="bg-black/60 px-3 py-2 rounded-lg">
+                                        <div class="flex items-center mb-1.5">
+                                            <div v-if="brandLogoUrl" class="w-7 h-7 rounded-full overflow-hidden">
+                                                <img :src="brandLogoUrl" :alt="displayBrandNameFb" class="w-full h-full object-cover" />
+                                            </div>
+                                            <div v-else class="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold">
+                                                {{ brandInitials }}
+                                            </div>
+                                            <span class="ml-2 text-white text-sm font-semibold">{{ displayBrandNameFb }}</span>
+                                            <button class="ml-2 px-2 py-0.5 bg-blue-500 rounded text-white text-xs font-semibold">Follow</button>
                                         </div>
-                                        <div v-else class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold">
-                                            {{ brandInitials }}
+                                        <p class="text-white text-sm line-clamp-2">{{ truncatedCaption || 'Your caption here...' }}</p>
+                                        <!-- Audio bar -->
+                                        <div class="flex items-center mt-1.5">
+                                            <svg class="w-3 h-3 text-white mr-1" fill="currentColor" viewBox="0 0 24 24">
+                                                <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
+                                            </svg>
+                                            <span class="text-white text-xs">Original Audio</span>
                                         </div>
-                                        <span class="ml-2 text-white text-sm font-semibold">{{ displayBrandNameFb }}</span>
-                                        <button class="ml-2 px-3 py-1 bg-blue-500 rounded text-white text-xs font-semibold">Follow</button>
-                                    </div>
-                                    <p class="text-white text-sm line-clamp-2">{{ truncatedCaption || 'Your caption here...' }}</p>
-                                    <!-- Audio bar -->
-                                    <div class="flex items-center mt-2">
-                                        <svg class="w-3 h-3 text-white mr-1" fill="currentColor" viewBox="0 0 24 24">
-                                            <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
-                                        </svg>
-                                        <span class="text-white text-xs">Original Audio</span>
                                     </div>
                                 </div>
                             </div>
@@ -1166,5 +1197,54 @@ const exportAsJpeg = async () => {
         </main>
 
         <Footer />
+
+        <!-- Signup Prompt Modal -->
+        <Teleport to="body">
+            <Transition name="fade">
+                <div v-if="showSignupPrompt" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" @click.self="dismissSignupPrompt">
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-md w-full p-6 transform transition-all">
+                        <div class="text-center">
+                            <div class="mx-auto w-16 h-16 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center mb-4">
+                                <svg class="w-8 h-8 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                                </svg>
+                            </div>
+                            <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                                Enjoying the mockup generator?
+                            </h3>
+                            <p class="text-gray-600 dark:text-gray-400 mb-6">
+                                Create a free account to save your work, collaborate with your team, and get client approvals faster.
+                            </p>
+                            <div class="flex flex-col gap-3">
+                                <RouterLink
+                                    to="/register"
+                                    class="w-full bg-primary-600 text-white px-4 py-3 rounded-lg font-medium hover:bg-primary-700 transition-colors"
+                                >
+                                    Create Free Account
+                                </RouterLink>
+                                <button
+                                    @click="dismissSignupPrompt"
+                                    class="w-full text-gray-600 dark:text-gray-400 px-4 py-2 rounded-lg font-medium hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                >
+                                    Maybe later
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </Transition>
+        </Teleport>
     </div>
 </template>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
+}
+</style>

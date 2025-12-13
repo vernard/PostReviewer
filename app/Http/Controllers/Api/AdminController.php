@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Agency;
 use App\Models\ApprovalRequest;
 use App\Models\Brand;
+use App\Models\HomepageUsage;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\User;
@@ -43,6 +44,7 @@ class AdminController extends Controller
                     ->pluck('count', 'status'),
                 'approval_rate' => $this->calculateApprovalRate(),
             ],
+            'homepage_usage' => $this->getHomepageUsageStats(),
             'recent_activity' => $this->getRecentActivity(),
         ];
 
@@ -211,5 +213,63 @@ class AdminController extends Controller
             ->take(15)
             ->values()
             ->toArray();
+    }
+
+    private function getHomepageUsageStats(): array
+    {
+        $total = HomepageUsage::count();
+        $today = HomepageUsage::whereDate('created_at', today())->count();
+        $thisWeek = HomepageUsage::where('created_at', '>=', now()->startOfWeek())->count();
+        $thisMonth = HomepageUsage::where('created_at', '>=', now()->startOfMonth())->count();
+
+        // Unique visitors (by IP)
+        $uniqueVisitors = HomepageUsage::distinct('ip_address')->count('ip_address');
+        $uniqueToday = HomepageUsage::whereDate('created_at', today())
+            ->distinct('ip_address')
+            ->count('ip_address');
+
+        // By action type
+        $byAction = HomepageUsage::select('action', DB::raw('count(*) as count'))
+            ->groupBy('action')
+            ->pluck('count', 'action');
+
+        // By platform
+        $byPlatform = HomepageUsage::select('platform', DB::raw('count(*) as count'))
+            ->whereNotNull('platform')
+            ->groupBy('platform')
+            ->orderByDesc('count')
+            ->limit(10)
+            ->pluck('count', 'platform');
+
+        // Conversion tracking: users who used homepage before signing up
+        $convertedUsers = User::whereIn('id', function ($query) {
+            $query->select('user_id')
+                ->from('homepage_usages')
+                ->whereNotNull('user_id');
+        })->count();
+
+        // Daily usage for the past 7 days
+        $dailyUsage = HomepageUsage::select(
+            DB::raw('DATE(created_at) as date'),
+            DB::raw('count(*) as total'),
+            DB::raw('count(DISTINCT ip_address) as unique_visitors')
+        )
+            ->where('created_at', '>=', now()->subDays(7))
+            ->groupBy(DB::raw('DATE(created_at)'))
+            ->orderBy('date')
+            ->get();
+
+        return [
+            'total' => $total,
+            'today' => $today,
+            'this_week' => $thisWeek,
+            'this_month' => $thisMonth,
+            'unique_visitors' => $uniqueVisitors,
+            'unique_today' => $uniqueToday,
+            'by_action' => $byAction,
+            'by_platform' => $byPlatform,
+            'converted_users' => $convertedUsers,
+            'daily_usage' => $dailyUsage,
+        ];
     }
 }

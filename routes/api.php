@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BrandController;
 use App\Http\Controllers\Api\CollectionController;
 use App\Http\Controllers\Api\CommentController;
+use App\Http\Controllers\Api\HomepageController;
 use App\Http\Controllers\Api\MediaController;
 use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\AdminController;
@@ -24,6 +25,9 @@ use Illuminate\Support\Facades\Route;
 Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:register');
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
 Route::post('/invitation/{token}/accept', [AuthController::class, 'acceptInvitation'])->middleware('throttle:invitation');
+
+// Homepage tracking (public, rate limited)
+Route::post('/homepage/track', [HomepageController::class, 'trackUsage'])->middleware('throttle:60,1');
 
 // Public approval routes (rate limited to prevent token enumeration)
 Route::middleware('throttle:public-approval')->group(function () {

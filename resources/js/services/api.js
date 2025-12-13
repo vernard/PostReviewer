@@ -147,6 +147,11 @@ export const collectionApi = {
     removePosts: (id, postIds) => api.delete(`/collections/${id}/posts`, { data: { post_ids: postIds } }),
 };
 
+// Homepage API (public tracking)
+export const homepageApi = {
+    trackUsage: (data) => api.post('/homepage/track', data),
+};
+
 // Admin API (super admin only)
 export const adminApi = {
     dashboard: () => api.get('/admin/dashboard'),
