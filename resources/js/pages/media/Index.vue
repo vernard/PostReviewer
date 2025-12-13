@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { mediaApi } from '@/services/api';
 import { useBrandStore } from '@/stores/brand';
@@ -56,13 +56,69 @@ const fetchMedia = async () => {
     }
 };
 
+// File size limits (in bytes)
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
+const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const SUPPORTED_VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/x-msvideo'];
+
+const uploadError = ref('');
+
+const openUploadModal = () => {
+    uploadError.value = '';
+    uploadForm.value.files = [];
+    showUploadModal.value = true;
+};
+
+const validateFile = (file) => {
+    const isImage = SUPPORTED_IMAGE_TYPES.includes(file.type);
+    const isVideo = SUPPORTED_VIDEO_TYPES.includes(file.type);
+
+    if (!isImage && !isVideo) {
+        return `"${file.name}" is not a supported file type. Use JPG, PNG, WebP, MP4, MOV, or AVI.`;
+    }
+
+    const maxSize = isImage ? MAX_IMAGE_SIZE : MAX_VIDEO_SIZE;
+    if (file.size > maxSize) {
+        const maxSizeMB = isImage ? '10MB' : '100MB';
+        return `"${file.name}" is too large (${formatFileSize(file.size)}). Max ${isImage ? 'image' : 'video'} size is ${maxSizeMB}.`;
+    }
+
+    return null;
+};
+
 const handleFileSelect = (event) => {
-    uploadForm.value.files = Array.from(event.target.files);
+    uploadError.value = '';
+    const files = Array.from(event.target.files);
+
+    // Validate all files
+    for (const file of files) {
+        const error = validateFile(file);
+        if (error) {
+            uploadError.value = error;
+            event.target.value = '';
+            return;
+        }
+    }
+
+    uploadForm.value.files = files;
 };
 
 const handleDrop = (event) => {
     event.preventDefault();
-    uploadForm.value.files = Array.from(event.dataTransfer.files);
+    uploadError.value = '';
+    const files = Array.from(event.dataTransfer.files);
+
+    // Validate all files
+    for (const file of files) {
+        const error = validateFile(file);
+        if (error) {
+            uploadError.value = error;
+            return;
+        }
+    }
+
+    uploadForm.value.files = files;
 };
 
 const uploadMedia = async () => {
@@ -70,6 +126,7 @@ const uploadMedia = async () => {
 
     uploading.value = true;
     uploadProgress.value = 0;
+    uploadError.value = '';
 
     try {
         for (let i = 0; i < uploadForm.value.files.length; i++) {
@@ -83,7 +140,7 @@ const uploadMedia = async () => {
         uploadForm.value = { brand_id: '', files: [] };
         await fetchMedia();
     } catch (err) {
-        alert(err.response?.data?.message || 'Failed to upload media');
+        uploadError.value = err.response?.data?.message || 'Failed to upload media';
     } finally {
         uploading.value = false;
         uploadProgress.value = 0;
@@ -154,8 +211,65 @@ watch(() => brandStore.activeBrandId, (newBrandId) => {
     }
 });
 
+// Echo channel for real-time updates
+let echoChannel = null;
+
+// Handle media processed event from WebSocket
+const handleMediaProcessed = (event) => {
+    const { action, mediaId, media: updatedMedia } = event;
+
+    if (action === 'ready' && updatedMedia) {
+        // Update in media array
+        const index = media.value.findIndex(m => m.id === mediaId);
+        if (index !== -1) {
+            media.value[index] = updatedMedia;
+        }
+    } else if (action === 'failed') {
+        // Update status to failed
+        const index = media.value.findIndex(m => m.id === mediaId);
+        if (index !== -1) {
+            media.value[index].status = 'failed';
+        }
+    }
+};
+
+// Subscribe to brand channel for media updates
+const subscribeToMediaUpdates = () => {
+    if (!window.Echo || !filters.value.brand_id) return;
+
+    unsubscribeFromMediaUpdates();
+
+    try {
+        echoChannel = window.Echo.private(`brand.${filters.value.brand_id}`);
+        echoChannel.listen('.media.processed', handleMediaProcessed);
+    } catch (e) {
+        console.warn('Failed to subscribe to media channel:', e);
+    }
+};
+
+const unsubscribeFromMediaUpdates = () => {
+    if (echoChannel && window.Echo) {
+        try {
+            window.Echo.leave(`brand.${filters.value.brand_id}`);
+        } catch (e) {
+            // Ignore errors when leaving channel
+        }
+        echoChannel = null;
+    }
+};
+
+// Re-subscribe when brand filter changes
+watch(() => filters.value.brand_id, () => {
+    subscribeToMediaUpdates();
+});
+
 onMounted(() => {
     fetchMedia();
+    subscribeToMediaUpdates();
+});
+
+onUnmounted(() => {
+    unsubscribeFromMediaUpdates();
 });
 </script>
 
@@ -166,7 +280,7 @@ onMounted(() => {
                 <div class="flex justify-between items-center">
                     <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Media Library</h1>
                     <button
-                        @click="showUploadModal = true"
+                        @click="openUploadModal"
                         class="bg-primary-600 dark:bg-primary-500 text-white px-4 py-2 rounded-md hover:bg-primary-700 dark:hover:bg-primary-600 flex items-center gap-2"
                     >
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -230,7 +344,7 @@ onMounted(() => {
                             : 'Upload your first image or video to get started.' }}
                     </p>
                     <button
-                        @click="showUploadModal = true"
+                        @click="openUploadModal"
                         class="mt-4 inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 dark:bg-primary-500 hover:bg-primary-700 dark:hover:bg-primary-600"
                     >
                         Upload Media
@@ -244,30 +358,43 @@ onMounted(() => {
                         :key="item.id"
                         class="group relative aspect-square bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden"
                     >
-                        <img
-                            v-if="item.type === 'image'"
-                            :src="item.thumbnail_url || item.url"
-                            :alt="item.original_filename"
-                            class="w-full h-full object-cover"
-                        />
-                        <img
-                            v-else-if="item.thumbnail_url"
-                            :src="item.thumbnail_url"
-                            :alt="item.original_filename"
-                            class="w-full h-full object-cover"
-                        />
+                        <!-- Processing state -->
                         <div
-                            v-else
-                            class="w-full h-full flex items-center justify-center bg-gray-200 dark:bg-gray-600"
+                            v-if="item.status === 'processing'"
+                            class="w-full h-full bg-gray-900 flex flex-col items-center justify-center"
                         >
-                            <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            <svg class="w-10 h-10 text-gray-400 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/>
                             </svg>
+                            <span class="text-gray-400 text-xs mt-2">Processing...</span>
                         </div>
+                        <!-- Ready state -->
+                        <template v-else>
+                            <img
+                                v-if="item.type === 'image'"
+                                :src="item.thumbnail_url || item.url"
+                                :alt="item.original_filename"
+                                class="w-full h-full object-cover"
+                            />
+                            <img
+                                v-else-if="item.thumbnail_url"
+                                :src="item.thumbnail_url"
+                                :alt="item.original_filename"
+                                class="w-full h-full object-cover"
+                            />
+                            <div
+                                v-else
+                                class="w-full h-full flex items-center justify-center bg-gray-200 dark:bg-gray-600"
+                            >
+                                <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                            </div>
+                        </template>
 
                         <!-- Video play button overlay (centered only) -->
                         <div
-                            v-if="item.type === 'video'"
+                            v-if="item.type === 'video' && item.status !== 'processing'"
                             class="absolute inset-0 flex items-center justify-center pointer-events-none"
                         >
                             <button
@@ -282,7 +409,7 @@ onMounted(() => {
 
                         <!-- Video duration badge -->
                         <div
-                            v-if="item.type === 'video' && item.duration"
+                            v-if="item.type === 'video' && item.duration && item.status !== 'processing'"
                             class="absolute bottom-2 left-2 z-20 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded pointer-events-none"
                         >
                             {{ formatDuration(item.duration) }}
@@ -367,8 +494,13 @@ onMounted(() => {
                                 <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
                                     <span class="text-primary-600 dark:text-primary-400 font-medium">Click to upload</span> or drag and drop
                                 </p>
-                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">PNG, JPG, MP4 up to 100MB</p>
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Images (JPG, PNG, WebP) up to 10MB, Videos (MP4, MOV, AVI) up to 100MB</p>
                             </label>
+                        </div>
+
+                        <!-- Error message -->
+                        <div v-if="uploadError" class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                            <p class="text-sm text-red-600 dark:text-red-400">{{ uploadError }}</p>
                         </div>
 
                         <!-- Selected files list -->
