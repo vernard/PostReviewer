@@ -22,6 +22,8 @@ class Brand extends Model
         'color_scheme',
         'profile_name',
         'profile_avatar',
+        'instagram_handle',
+        'facebook_page_name',
         'settings',
     ];
 

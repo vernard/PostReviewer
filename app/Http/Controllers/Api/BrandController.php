@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\BrandChanged;
 use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use App\Models\User;
@@ -15,9 +16,9 @@ class BrandController extends Controller
         $user = $request->user();
 
         if ($user->isManager()) {
-            $brands = $user->agency->brands()->withCount('posts')->get();
+            $brands = $user->agency->brands()->withCount(['posts', 'users'])->get();
         } else {
-            $brands = $user->brands()->withCount('posts')->get();
+            $brands = $user->brands()->withCount(['posts', 'users'])->get();
         }
 
         return response()->json([
@@ -38,19 +39,41 @@ class BrandController extends Controller
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'logo' => ['nullable', 'string'],
+            'logo' => ['nullable', 'image', 'max:2048'],
             'color_scheme' => ['nullable', 'array'],
             'profile_name' => ['nullable', 'string', 'max:255'],
             'profile_avatar' => ['nullable', 'string'],
+            'user_ids' => ['nullable', 'array'],
+            'user_ids.*' => ['integer', 'exists:users,id'],
         ]);
+
+        $data = $request->only(['name', 'description', 'color_scheme', 'profile_name', 'profile_avatar']);
+
+        // Handle logo upload
+        if ($request->hasFile('logo')) {
+            $data['logo'] = $request->file('logo')->store('brands', 'public');
+        }
 
         $brand = Brand::create([
             'agency_id' => $user->agency_id,
-            ...$request->only(['name', 'description', 'logo', 'color_scheme', 'profile_name', 'profile_avatar']),
+            ...$data,
         ]);
 
+        // Attach users (always include creator)
+        $userIds = $request->user_ids ?? [];
+        $userIds[] = $user->id;
+        // Filter to only include users from the same agency
+        $validUserIds = User::where('agency_id', $user->agency_id)
+            ->whereIn('id', array_unique($userIds))
+            ->pluck('id')
+            ->toArray();
+        $brand->users()->attach($validUserIds);
+
+        // Broadcast brand created event
+        broadcast(new BrandChanged('created', $user->agency_id, $brand->id, $brand))->toOthers();
+
         return response()->json([
-            'brand' => $brand,
+            'brand' => $brand->load('users'),
         ], 201);
     }
 
@@ -102,8 +125,13 @@ class BrandController extends Controller
 
         $brand->update($data);
 
+        $freshBrand = $brand->fresh();
+
+        // Broadcast brand updated event
+        broadcast(new BrandChanged('updated', $user->agency_id, $brand->id, $freshBrand))->toOthers();
+
         return response()->json([
-            'brand' => $brand->fresh(),
+            'brand' => $freshBrand,
         ]);
     }
 
@@ -117,7 +145,13 @@ class BrandController extends Controller
             ], 403);
         }
 
+        $agencyId = $brand->agency_id;
+        $brandId = $brand->id;
+
         $brand->delete();
+
+        // Broadcast brand deleted event
+        broadcast(new BrandChanged('deleted', $agencyId, $brandId))->toOthers();
 
         return response()->json([
             'message' => 'Brand deleted successfully.',
