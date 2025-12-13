@@ -26,9 +26,14 @@ Maintain this structure in TODO.md:
 ## In Progress
 - [ ] Currently working on this
 
+## For Testing
+- [ ] Implemented but needs user verification
+
 ## Done
-- [x] Completed task
+- [x] Completed and tested
 ```
+
+**Note:** When completing tasks, move them to "For Testing" first. The user tests completed work in bulk, so keep items there until they confirm testing is done.
 
 ## Instructions
 

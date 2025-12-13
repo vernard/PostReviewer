@@ -1,4 +1,6 @@
-- When making new files or folders, make sure it's owned by 33:33 or www-data:www-data. And set the proper permissions
+- When making new files or folders, ALWAYS run `chown -R 33:33 <path>` after creating them. This is required for the Docker container to access them properly.
+- Run PHP/artisan commands via `docker compose exec php php artisan ...` - never directly on the host (host has wrong PHP version)
 - Don't use playwright MCP if you can check via curl. Only use playwright when checking things you can't check via curl because it takes up a lot of tokens.
 - Always consider UX impact before implementing features. Don't just add functionality - think about how it integrates into the user's workflow, whether it adds unnecessary complexity, and if it makes the common case harder.
 - Use `gap` on flex/grid containers for spacing between children instead of margins on individual items. Gap is cleaner, works with reordering (e.g., responsive `order-*` classes), and avoids edge cases with first/last child margins.
+- When completing tasks, move them to "For Testing" instead of marking them as done. The user tests completed work in bulk, so keep a visible list of what needs verification. Only move items to "Done" after the user confirms they've tested them.
