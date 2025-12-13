@@ -145,6 +145,12 @@ const routes = [
         component: () => import('@/pages/admin/Users.vue'),
         meta: { requiresAuth: true, requiresSuperAdmin: true },
     },
+    {
+        path: '/admin/agencies',
+        name: 'admin.agencies',
+        component: () => import('@/pages/admin/Agencies.vue'),
+        meta: { requiresAuth: true, requiresSuperAdmin: true },
+    },
 ];
 
 const router = createRouter({
@@ -182,6 +188,11 @@ router.beforeEach(async (to, from, next) => {
 
     // Route is for guests only but user is authenticated
     if (to.meta.guest && isAuthenticated) {
+        return next({ name: 'dashboard' });
+    }
+
+    // Route requires super admin
+    if (to.meta.requiresSuperAdmin && !authStore.isSuperAdmin) {
         return next({ name: 'dashboard' });
     }
 

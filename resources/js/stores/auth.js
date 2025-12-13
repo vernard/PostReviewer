@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { authApi } from '@/services/api';
+import { authApi, adminApi } from '@/services/api';
 import router from '@/router';
 import { useBrandStore } from './brand';
 
@@ -15,6 +15,7 @@ export const useAuthStore = defineStore('auth', () => {
     const isAdmin = computed(() => user.value?.role === 'admin');
     const isManager = computed(() => ['admin', 'manager'].includes(user.value?.role));
     const canReview = computed(() => ['admin', 'manager', 'reviewer'].includes(user.value?.role));
+    const isSuperAdmin = computed(() => user.value?.is_super_admin === true);
 
     async function fetchUser() {
         if (!token.value) return;
@@ -130,6 +131,32 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
+    async function impersonate(userId) {
+        try {
+            loading.value = true;
+            error.value = null;
+
+            const response = await adminApi.impersonate(userId);
+            token.value = response.data.token;
+            user.value = response.data.user;
+            localStorage.setItem('auth_token', token.value);
+
+            // Reinitialize brand store for impersonated user
+            const brandStore = getBrandStore();
+            brandStore.reset();
+            await brandStore.fetchBrands();
+            brandStore.subscribeToChannel(user.value?.agency_id);
+
+            router.push('/dashboard');
+            return response.data;
+        } catch (err) {
+            error.value = err.response?.data?.message || 'Impersonation failed';
+            throw err;
+        } finally {
+            loading.value = false;
+        }
+    }
+
     return {
         user,
         token,
@@ -139,10 +166,12 @@ export const useAuthStore = defineStore('auth', () => {
         isAdmin,
         isManager,
         canReview,
+        isSuperAdmin,
         fetchUser,
         login,
         register,
         logout,
         acceptInvitation,
+        impersonate,
     };
 });

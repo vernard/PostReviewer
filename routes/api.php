@@ -8,8 +8,10 @@ use App\Http\Controllers\Api\CollectionController;
 use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\MediaController;
 use App\Http\Controllers\Api\PostController;
+use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\PublicApprovalController;
+use App\Http\Controllers\PublicReviewController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -25,8 +27,14 @@ Route::post('/invitation/{token}/accept', [AuthController::class, 'acceptInvitat
 
 // Public approval routes (rate limited to prevent token enumeration)
 Route::middleware('throttle:public-approval')->group(function () {
+    // Collection-based approval (multiple posts)
     Route::get('/public/approval/{token}', [PublicApprovalController::class, 'show']);
     Route::post('/public/approval/{token}/submit', [PublicApprovalController::class, 'submit']);
+
+    // Single post review via email invite
+    Route::get('/public/review/{token}', [PublicReviewController::class, 'show']);
+    Route::post('/public/review/{token}/approve', [PublicReviewController::class, 'approve']);
+    Route::post('/public/review/{token}/request-changes', [PublicReviewController::class, 'requestChanges']);
 });
 
 // Protected routes
@@ -49,6 +57,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('brands', BrandController::class);
     Route::post('/brands/{brand}/users', [BrandController::class, 'addUser']);
     Route::delete('/brands/{brand}/users/{user}', [BrandController::class, 'removeUser']);
+    Route::get('/brands/{brand}/default-reviewers', [BrandController::class, 'getDefaultReviewers']);
 
     // Media
     Route::get('/media', [MediaController::class, 'index']);
@@ -59,6 +68,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Posts
     Route::apiResource('posts', PostController::class);
     Route::post('/posts/{post}/submit', [PostController::class, 'submitForApproval']);
+    Route::post('/posts/{post}/invite-reviewers', [PostController::class, 'inviteReviewers']);
     Route::post('/posts/{post}/duplicate', [PostController::class, 'duplicate']);
 
     // Post Media
@@ -87,4 +97,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Dashboard stats
     Route::get('/dashboard/stats', [AgencyController::class, 'dashboardStats']);
+});
+
+// Super admin routes
+Route::middleware(['auth:sanctum', 'super-admin'])->prefix('admin')->group(function () {
+    Route::get('/dashboard', [AdminController::class, 'dashboard']);
+    Route::get('/users', [AdminController::class, 'users']);
+    Route::get('/agencies', [AdminController::class, 'agencies']);
+    Route::post('/impersonate/{user}', [AdminController::class, 'impersonate']);
 });

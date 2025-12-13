@@ -146,3 +146,11 @@ export const collectionApi = {
     addPosts: (id, postIds) => api.post(`/collections/${id}/posts`, { post_ids: postIds }),
     removePosts: (id, postIds) => api.delete(`/collections/${id}/posts`, { data: { post_ids: postIds } }),
 };
+
+// Admin API (super admin only)
+export const adminApi = {
+    dashboard: () => api.get('/admin/dashboard'),
+    users: (params) => api.get('/admin/users', { params }),
+    agencies: (params) => api.get('/admin/agencies', { params }),
+    impersonate: (userId) => api.post(`/admin/impersonate/${userId}`),
+};

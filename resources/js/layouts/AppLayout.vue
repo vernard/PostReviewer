@@ -30,6 +30,13 @@ const workspaceNavigation = [
     { name: 'Settings', href: '/settings', icon: 'cog' },
 ];
 
+// Admin navigation - super admin only
+const adminNavigation = [
+    { name: 'Admin Dashboard', href: '/admin', icon: 'shield-check' },
+    { name: 'All Users', href: '/admin/users', icon: 'user-group' },
+    { name: 'All Agencies', href: '/admin/agencies', icon: 'building-office' },
+];
+
 const filteredMainNavigation = computed(() => mainNavigation.filter(item => {
     if (item.requiresReview) {
         return authStore.canReview;
@@ -235,6 +242,41 @@ const logout = async () => {
                                 <!-- Settings -->
                                 <svg v-if="item.icon === 'cog'" :class="['w-6 h-6 transition duration-75', isActive(item.href) ? 'text-primary-700 dark:text-primary-500' : 'text-gray-500 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white']" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                                </svg>
+                                <span class="ml-3">{{ item.name }}</span>
+                            </RouterLink>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Admin Section (Super Admin Only) -->
+                <div v-if="authStore.isSuperAdmin" class="pt-5 mt-5 border-t border-red-200 dark:border-red-700/50">
+                    <div class="px-2 mb-2">
+                        <div class="text-xs font-medium text-red-500 dark:text-red-400 uppercase tracking-wider">Super Admin</div>
+                    </div>
+                    <ul class="space-y-2">
+                        <li v-for="item in adminNavigation" :key="item.name">
+                            <RouterLink
+                                :to="item.href"
+                                :class="[
+                                    'flex items-center p-2 text-base font-medium rounded-lg transition duration-75 group',
+                                    isActive(item.href)
+                                        ? 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
+                                        : 'text-gray-900 hover:bg-red-50 dark:text-white dark:hover:bg-red-900/20'
+                                ]"
+                                @click="sidebarOpen = false"
+                            >
+                                <!-- Shield Check (Admin Dashboard) -->
+                                <svg v-if="item.icon === 'shield-check'" :class="['w-6 h-6 transition duration-75', isActive(item.href) ? 'text-red-700 dark:text-red-400' : 'text-gray-500 group-hover:text-red-600 dark:text-gray-400 dark:group-hover:text-red-400']" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                </svg>
+                                <!-- User Group (All Users) -->
+                                <svg v-if="item.icon === 'user-group'" :class="['w-6 h-6 transition duration-75', isActive(item.href) ? 'text-red-700 dark:text-red-400' : 'text-gray-500 group-hover:text-red-600 dark:text-gray-400 dark:group-hover:text-red-400']" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
+                                </svg>
+                                <!-- Building Office (All Agencies) -->
+                                <svg v-if="item.icon === 'building-office'" :class="['w-6 h-6 transition duration-75', isActive(item.href) ? 'text-red-700 dark:text-red-400' : 'text-gray-500 group-hover:text-red-600 dark:text-gray-400 dark:group-hover:text-red-400']" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z" clip-rule="evenodd" />
                                 </svg>
                                 <span class="ml-3">{{ item.name }}</span>
                             </RouterLink>

@@ -7,10 +7,7 @@
 - [ ] It should be possible to add brand logo when creating new brand. Also, it should be easy to assign people into it.
 - [ ] The whole SEO setup of the site needs a review as well. Not sure what needs to be done here. Setup robots, create sitemap, register in search console, etc.
 - [ ] Blog feature? Thinking if this should be separate (like HUGO).
-- [ ] Track the usages on home page mockups. Group it in some way, maybe IP address? I just need to know how many people are using it, and how many times they do. If they're registered, track it to their account. Just realized they can't access home page, but they should be able to. Along with other content pages on site. 
-- [ ] Add an admin panel control where only I (Vernard, super admin) can access. This should tell me about the overall health of the app. Tell me useful stats like # of users, # of approved, etc. (tells me if I'm actually fulfilling the purpose of the app)
-    * Should also allow me to login as certain users (for testing purposes).
-    * Should tell me who the power users are. How many brands they have, how many posts they've made, etc. I wanna keep track the usage.
+- [ ] Track the usages on home page mockups. Group it in some way, maybe IP address? I just need to know how many people are using it, and how many times they do. If they're registered, track it to their account. Just realized they can't access home page, but they should be able to. Along with other content pages on site.
 - [ ] It should be possible to add a "strict" review-only user. They shouldn't have to register, but maybe an email verification is required. Magic link sent to their email is enough? We want it easy to approve.
 
 
@@ -23,6 +20,9 @@
     - Show a table view above for each post, where they can copy paste multiple captions
 
 ## Backlog
+
+## For Testing
+- [ ] Add admin panel control for super admin - Dashboard with user/brand/post stats, approval rate, recent activity. Users page with power user sorting (by posts/brands). Agencies page with per-agency stats. Login-as-user feature with audit logging. Access at /admin (requires `UPDATE users SET is_super_admin = 1 WHERE email = 'your@email.com'`).
 
 ## Done
 - [x] Dynamic background color for letterboxing - samples edge colors from images instead of black bars for a more natural look
