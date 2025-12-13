@@ -110,11 +110,17 @@ const subscribeError = ref('');
 const subscribeToNewsletter = async () => {
     if (!subscribeEmail.value || subscribing.value) return;
 
+    const subscribeUrl = import.meta.env.VITE_EMAILIT_SUBSCRIBE_URL;
+    if (!subscribeUrl) {
+        subscribeError.value = 'Email subscription is not configured.';
+        return;
+    }
+
     subscribing.value = true;
     subscribeError.value = '';
 
     try {
-        const response = await fetch(import.meta.env.VITE_EMAILIT_SUBSCRIBE_URL, {
+        const response = await fetch(subscribeUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -177,14 +183,14 @@ const exportAsJpeg = async () => {
     <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
         <nav class="bg-white dark:bg-gray-800 shadow dark:shadow-gray-700/30">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between h-16">
-                    <div class="flex items-center">
-                        <span class="text-xl font-bold text-gray-900 dark:text-white">Post Reviewer</span>
+                <div class="flex justify-between items-center h-16">
+                    <div class="flex items-center min-w-0">
+                        <span class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white truncate">Post Reviewer</span>
                     </div>
-                    <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-2 sm:space-x-4">
                         <button
                             @click="toggleDarkMode"
-                            class="p-2 text-gray-500 rounded-lg hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-700"
+                            class="hidden sm:block p-2 text-gray-500 rounded-lg hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-700"
                         >
                             <svg v-if="isDark" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" fill-rule="evenodd" clip-rule="evenodd" />
@@ -195,13 +201,13 @@ const exportAsJpeg = async () => {
                         </button>
                         <RouterLink
                             to="/login"
-                            class="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+                            class="hidden sm:inline text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
                         >
                             Login
                         </RouterLink>
                         <RouterLink
                             to="/register"
-                            class="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700"
+                            class="inline-flex items-center bg-primary-600 text-white px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base rounded-md hover:bg-primary-700 whitespace-nowrap h-auto"
                         >
                             Get Started
                         </RouterLink>
@@ -232,16 +238,16 @@ const exportAsJpeg = async () => {
                     Create pixel-perfect mockups of your Facebook and Instagram posts.
                     Get team approval before going live. Perfect for agencies and brands.
                 </p>
-                <div class="mt-10 flex justify-center gap-4">
+                <div class="mt-10 flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
                     <RouterLink
                         to="/register"
-                        class="bg-primary-600 text-white px-8 py-3 rounded-md text-lg font-medium hover:bg-primary-700"
+                        class="bg-primary-600 text-white px-6 sm:px-8 py-3 rounded-md text-base sm:text-lg font-medium hover:bg-primary-700 text-center"
                     >
                         Start Free Trial
                     </RouterLink>
                     <a
                         href="#demo"
-                        class="bg-white dark:bg-gray-800 text-primary-600 dark:text-primary-500 px-8 py-3 rounded-md text-lg font-medium border border-primary-600 dark:border-primary-500 hover:bg-primary-50 dark:hover:bg-gray-700"
+                        class="bg-white dark:bg-gray-800 text-primary-600 dark:text-primary-500 px-6 sm:px-8 py-3 rounded-md text-base sm:text-lg font-medium border border-primary-600 dark:border-primary-500 hover:bg-primary-50 dark:hover:bg-gray-700 text-center"
                     >
                         Try It Now
                     </a>
@@ -249,7 +255,7 @@ const exportAsJpeg = async () => {
             </div>
 
             <!-- Demo Section -->
-            <div id="demo" class="mt-24 bg-white dark:bg-gray-800 rounded-2xl shadow-xl dark:shadow-gray-900/50 p-8">
+            <div id="demo" class="mt-16 sm:mt-24 bg-white dark:bg-gray-800 rounded-2xl shadow-xl dark:shadow-gray-900/50 p-4 sm:p-8">
                 <div class="text-center mb-8">
                     <h2 class="text-3xl font-bold text-gray-900 dark:text-white">Try It Now</h2>
                     <p class="mt-2 text-gray-600 dark:text-gray-400">Upload an image or video to see how it looks on social media</p>
@@ -257,8 +263,8 @@ const exportAsJpeg = async () => {
 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <!-- Upload Section -->
-                    <div>
-                        <div class="mb-4">
+                    <div class="flex flex-col gap-4">
+                        <div class="order-3 lg:order-1">
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Platform</label>
                             <div class="flex gap-2">
                                 <button
@@ -287,9 +293,9 @@ const exportAsJpeg = async () => {
                         </div>
 
                         <!-- Brand Settings -->
-                        <div class="mb-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                        <div class="p-3 sm:p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg order-1 lg:order-2">
                             <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Brand Settings</h4>
-                            <div class="grid grid-cols-2 gap-4">
+                            <div class="grid grid-cols-2 gap-3 sm:gap-4">
                                 <div>
                                     <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Brand Name</label>
                                     <input
@@ -337,7 +343,7 @@ const exportAsJpeg = async () => {
                             @drop="handleDrop"
                             @dragover.prevent
                             @dragenter.prevent
-                            class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-12 text-center hover:border-primary-500 transition-colors cursor-pointer bg-white dark:bg-gray-800"
+                            class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-12 text-center hover:border-primary-500 transition-colors cursor-pointer bg-white dark:bg-gray-800 order-2 lg:order-3"
                         >
                             <input
                                 type="file"
@@ -357,7 +363,7 @@ const exportAsJpeg = async () => {
                             </label>
                         </div>
 
-                        <div v-else class="space-y-4">
+                        <div v-else class="space-y-4 order-2 lg:order-3">
                             <div class="relative bg-gray-100 dark:bg-gray-700 rounded-lg p-4 flex items-center justify-center">
                                 <img v-if="!isVideo" :src="previewUrl" class="max-h-[200px] max-w-full object-contain rounded-lg" alt="Preview" />
                                 <video v-else :src="previewUrl" class="max-h-[200px] max-w-full object-contain rounded-lg" controls />
@@ -383,21 +389,21 @@ const exportAsJpeg = async () => {
                     </div>
 
                     <!-- Preview Section -->
-                    <div>
-                        <div class="bg-gray-100 dark:bg-gray-700 rounded-lg p-4 min-h-[400px] flex items-center justify-center">
+                    <div class="w-full overflow-x-auto">
+                        <div class="bg-gray-100 dark:bg-gray-700 rounded-lg p-2 sm:p-4 min-h-[400px] flex items-center justify-center">
                             <!-- Mockup Container -->
                             <div ref="mockupRef">
                             <!-- Instagram Mockup -->
-                            <div v-if="selectedPlatform === 'instagram'" class="bg-white rounded-lg shadow-lg w-full max-w-[375px]">
+                            <div v-if="selectedPlatform === 'instagram'" class="bg-white rounded-lg shadow-lg w-full max-w-[350px] sm:max-w-[375px]">
                                 <!-- Header -->
-                                <div class="flex items-center p-3 border-b">
+                                <div class="flex items-center gap-3 p-3 border-b">
                                     <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-500 p-0.5">
                                         <div class="w-full h-full bg-white rounded-full flex items-center justify-center overflow-hidden">
                                             <img v-if="brandLogoUrl" :src="brandLogoUrl" class="w-full h-full object-cover" />
                                             <span v-else class="text-xs font-bold text-gray-800">{{ brandInitials }}</span>
                                         </div>
                                     </div>
-                                    <div class="ml-3">
+                                    <div>
                                         <p class="text-sm font-semibold text-gray-900">{{ displayBrandName }}</p>
                                         <p class="text-xs text-gray-500">Sponsored</p>
                                     </div>
@@ -456,15 +462,15 @@ const exportAsJpeg = async () => {
                             </div>
 
                             <!-- Facebook Mockup -->
-                            <div v-else class="bg-white rounded-lg shadow-lg w-full max-w-[500px]">
+                            <div v-else class="bg-white rounded-lg shadow-lg w-full max-w-[350px] sm:max-w-[500px]">
                                 <!-- Header -->
-                                <div class="flex items-center p-3">
+                                <div class="flex items-center gap-3 p-3">
                                     <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center overflow-hidden relative">
                                         <img v-if="brandLogoUrl" :src="brandLogoUrl" class="w-full h-full object-cover" />
                                         <div v-if="brandLogoUrl" class="absolute inset-0 rounded-full" style="box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1)"></div>
                                         <span v-else class="text-white font-bold bg-blue-600 w-full h-full flex items-center justify-center">{{ brandInitials }}</span>
                                     </div>
-                                    <div class="ml-3">
+                                    <div>
                                         <p class="text-sm font-semibold text-gray-900">{{ displayBrandNameFb }}</p>
                                         <div class="flex items-center text-xs text-gray-500">
                                             <span>2h</span>
