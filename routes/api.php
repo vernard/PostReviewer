@@ -18,14 +18,16 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-// Public routes
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/invitation/{token}/accept', [AuthController::class, 'acceptInvitation']);
+// Public routes (with rate limiting to prevent brute force attacks)
+Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:register');
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
+Route::post('/invitation/{token}/accept', [AuthController::class, 'acceptInvitation'])->middleware('throttle:invitation');
 
-// Public approval routes (no auth required)
-Route::get('/public/approval/{token}', [PublicApprovalController::class, 'show']);
-Route::post('/public/approval/{token}/submit', [PublicApprovalController::class, 'submit']);
+// Public approval routes (rate limited to prevent token enumeration)
+Route::middleware('throttle:public-approval')->group(function () {
+    Route::get('/public/approval/{token}', [PublicApprovalController::class, 'show']);
+    Route::post('/public/approval/{token}/submit', [PublicApprovalController::class, 'submit']);
+});
 
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {

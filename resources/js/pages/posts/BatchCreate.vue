@@ -277,8 +277,8 @@ onMounted(() => {
                         :to="`/brands/${brand.id}`"
                         class="flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                     >
-                        <div v-if="brand.logo_url" class="w-6 h-6 rounded-full overflow-hidden">
-                            <img :src="brand.logo_url" :alt="brand.name" class="w-full h-full object-cover" />
+                        <div v-if="brand.logo_flat_url" class="w-6 h-6 rounded-full overflow-hidden">
+                            <img :src="brand.logo_flat_url" :alt="brand.name" class="w-full h-full object-cover" />
                         </div>
                         <div v-else class="w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
                             <span class="text-primary-600 dark:text-primary-400 text-xs font-semibold">
@@ -637,8 +637,8 @@ onMounted(() => {
                                     class="max-w-sm mx-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
                                 >
                                     <div class="flex items-center p-3">
-                                        <div v-if="brand?.logo_url" class="w-8 h-8 rounded-full overflow-hidden">
-                                            <img :src="brand.logo_url" :alt="brand.name" class="w-full h-full object-cover" />
+                                        <div v-if="brand?.logo_flat_url" class="w-8 h-8 rounded-full overflow-hidden">
+                                            <img :src="brand.logo_flat_url" :alt="brand.name" class="w-full h-full object-cover" />
                                         </div>
                                         <div v-else class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
                                             {{ brand?.name?.charAt(0) || 'B' }}
@@ -675,8 +675,8 @@ onMounted(() => {
                                     class="max-w-sm mx-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
                                 >
                                     <div class="flex items-center p-3">
-                                        <div v-if="brand?.logo_url" class="w-10 h-10 rounded-full overflow-hidden">
-                                            <img :src="brand.logo_url" :alt="brand.name" class="w-full h-full object-cover" />
+                                        <div v-if="brand?.logo_flat_url" class="w-10 h-10 rounded-full overflow-hidden">
+                                            <img :src="brand.logo_flat_url" :alt="brand.name" class="w-full h-full object-cover" />
                                         </div>
                                         <div v-else class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">
                                             {{ brand?.name?.charAt(0) || 'B' }}
@@ -723,8 +723,8 @@ onMounted(() => {
                                     <div class="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-black/60 to-transparent pointer-events-none"></div>
                                     <div class="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/60 to-transparent pointer-events-none"></div>
                                     <div class="absolute top-4 left-3 flex items-center">
-                                        <div v-if="brand?.logo_url" class="w-8 h-8 rounded-full overflow-hidden border-2 border-white">
-                                            <img :src="brand.logo_url" :alt="brand.name" class="w-full h-full object-cover" />
+                                        <div v-if="brand?.logo_flat_url" class="w-8 h-8 rounded-full overflow-hidden border-2 border-white">
+                                            <img :src="brand.logo_flat_url" :alt="brand.name" class="w-full h-full object-cover" />
                                         </div>
                                         <div v-else class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold border-2 border-white">
                                             {{ brand?.name?.charAt(0) || 'B' }}

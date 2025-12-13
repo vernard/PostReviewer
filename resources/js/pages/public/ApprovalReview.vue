@@ -205,8 +205,8 @@ onMounted(fetchCollection);
             <!-- Brand Info -->
             <div v-if="collection.brand" class="mb-6 flex items-center gap-3">
                 <img
-                    v-if="collection.brand.logo_url"
-                    :src="collection.brand.logo_url"
+                    v-if="collection.brand.logo_flat_url"
+                    :src="collection.brand.logo_flat_url"
                     :alt="collection.brand.name"
                     class="h-10 w-10 rounded-full object-cover"
                 />

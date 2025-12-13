@@ -42,9 +42,9 @@ class CommentController extends Controller
         }
 
         $request->validate([
-            'body' => ['required', 'string'],
+            'body' => ['required', 'string', 'max:5000'],
             'parent_id' => ['nullable', 'exists:comments,id'],
-            'attachment' => ['nullable', 'string'],
+            'attachment' => ['nullable', 'string', 'max:500', 'url'],
         ]);
 
         // If parent_id is provided, make sure it belongs to the same post

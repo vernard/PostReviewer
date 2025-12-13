@@ -289,8 +289,8 @@ onMounted(() => {
                                     class="max-w-sm mx-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
                                 >
                                     <div class="flex items-center p-3">
-                                        <div v-if="collection.brand?.logo_url" class="w-8 h-8 rounded-full overflow-hidden">
-                                            <img :src="collection.brand.logo_url" :alt="collection.brand.name" class="w-full h-full object-cover" />
+                                        <div v-if="collection.brand?.logo_flat_url" class="w-8 h-8 rounded-full overflow-hidden">
+                                            <img :src="collection.brand.logo_flat_url" :alt="collection.brand.name" class="w-full h-full object-cover" />
                                         </div>
                                         <div v-else class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
                                             {{ collection.brand?.name?.charAt(0) || 'B' }}
@@ -324,8 +324,8 @@ onMounted(() => {
                                     class="max-w-sm mx-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
                                 >
                                     <div class="flex items-center p-3">
-                                        <div v-if="collection.brand?.logo_url" class="w-10 h-10 rounded-full overflow-hidden">
-                                            <img :src="collection.brand.logo_url" :alt="collection.brand.name" class="w-full h-full object-cover" />
+                                        <div v-if="collection.brand?.logo_flat_url" class="w-10 h-10 rounded-full overflow-hidden">
+                                            <img :src="collection.brand.logo_flat_url" :alt="collection.brand.name" class="w-full h-full object-cover" />
                                         </div>
                                         <div v-else class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">
                                             {{ collection.brand?.name?.charAt(0) || 'B' }}
@@ -352,8 +352,8 @@ onMounted(() => {
                                     <div class="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-black/60 to-transparent"></div>
                                     <div class="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/60 to-transparent"></div>
                                     <div class="absolute top-4 left-3 flex items-center">
-                                        <div v-if="collection.brand?.logo_url" class="w-8 h-8 rounded-full overflow-hidden border-2 border-white">
-                                            <img :src="collection.brand.logo_url" class="w-full h-full object-cover" />
+                                        <div v-if="collection.brand?.logo_flat_url" class="w-8 h-8 rounded-full overflow-hidden border-2 border-white">
+                                            <img :src="collection.brand.logo_flat_url" class="w-full h-full object-cover" />
                                         </div>
                                         <span class="ml-2 text-white text-sm font-medium">{{ collection.brand?.name }}</span>
                                     </div>
