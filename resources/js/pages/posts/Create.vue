@@ -5,6 +5,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { postApi, mediaApi, brandApi } from '@/services/api';
 import { useBrandStore } from '@/stores/brand';
 import axios from 'axios';
+import html2canvas from 'html2canvas-pro';
 import { validatePost, getCaptionStatus, PLATFORM_LIMITS } from '@/utils/platformValidation';
 import { extractEdgeColor } from '@/composables/useEdgeColor';
 
@@ -30,7 +31,7 @@ const form = ref({
     brand_id: brandStore.activeBrandId,
     title: '',
     caption: '',
-    platforms: [],
+    platforms: ['facebook_feed', 'instagram_feed'],
 });
 
 const selectedMedia = ref([]);
@@ -40,6 +41,8 @@ const previewPlatform = ref('');
 const videoPreview = ref(null); // Media item being previewed
 const isPlayingVideo = ref(false); // Whether video is playing inline in mockup
 const mediaEdgeColor = ref('rgb(0, 0, 0)'); // Dynamic background for letterboxing
+const mockupRef = ref(null); // Reference to mockup container for export
+const exporting = ref(false); // Export in progress state
 
 // Submit for approval modal state
 const showSubmitModal = ref(false);
@@ -466,6 +469,38 @@ watch(() => brandStore.activeBrandId, (newVal, oldVal) => {
     }
 });
 
+const exportAsJpeg = async () => {
+    if (!mockupRef.value || exporting.value) return;
+
+    try {
+        exporting.value = true;
+        // Wait a moment for any animations to settle
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        const canvas = await html2canvas(mockupRef.value, {
+            backgroundColor: '#ffffff',
+            scale: 2,
+            useCORS: true,
+            allowTaint: true,
+            logging: false,
+        });
+
+        const link = document.createElement('a');
+        const platformName = previewPlatform.value.replace(/_/g, '-');
+        const brandName = brand.value?.name || 'post';
+        link.download = `${brandName}-${platformName}-${Date.now()}.jpg`;
+        link.href = canvas.toDataURL('image/jpeg', 0.95);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    } catch (err) {
+        console.error('Export failed:', err);
+        alert('Failed to export mockup: ' + err.message);
+    } finally {
+        exporting.value = false;
+    }
+};
+
 onMounted(() => {
     initPage();
     subscribeToMediaUpdates();
@@ -604,13 +639,6 @@ onUnmounted(() => {
                                             </svg>
                                         </button>
                                     </div>
-                                    <!-- Video duration badge -->
-                                    <div
-                                        v-if="isVideo(media) && media.duration && media.status !== 'processing'"
-                                        class="absolute bottom-1 right-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded"
-                                    >
-                                        {{ formatDuration(media.duration) }}
-                                    </div>
                                     <button
                                         @click="removeMedia(index)"
                                         class="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -709,47 +737,29 @@ onUnmounted(() => {
                                         </label>
                                     </div>
                                 </div>
-
-                                <!-- Platform Warnings -->
-                                <div v-if="validation.errors.length > 0 || validation.warnings.length > 0" class="mt-4 space-y-2">
-                                    <!-- Errors (blocking) -->
-                                    <div
-                                        v-for="(error, index) in validation.errors"
-                                        :key="'error-' + index"
-                                        class="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
-                                    >
-                                        <svg class="w-5 h-5 text-red-500 dark:text-red-400 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-                                        </svg>
-                                        <div class="flex-1 min-w-0">
-                                            <p class="text-sm font-medium text-red-800 dark:text-red-300">{{ error.platformName }}</p>
-                                            <p class="text-sm text-red-600 dark:text-red-400">{{ error.message }}</p>
-                                        </div>
-                                    </div>
-
-                                    <!-- Warnings (non-blocking) -->
-                                    <div
-                                        v-for="(warning, index) in validation.warnings"
-                                        :key="'warning-' + index"
-                                        class="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg"
-                                    >
-                                        <svg class="w-5 h-5 text-amber-500 dark:text-amber-400 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                                        </svg>
-                                        <div class="flex-1 min-w-0">
-                                            <p class="text-sm font-medium text-amber-800 dark:text-amber-300">{{ warning.platformName }}</p>
-                                            <p class="text-sm text-amber-600 dark:text-amber-400">{{ warning.message }}</p>
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Preview -->
                     <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-                        <div class="mb-4">
+                        <div class="mb-4 flex items-center justify-between">
                             <h2 class="text-lg font-medium text-gray-900 dark:text-white">Preview</h2>
+                            <button
+                                v-if="form.platforms.length > 0 && selectedMedia.length > 0"
+                                @click="exportAsJpeg"
+                                :disabled="exporting"
+                                class="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-green-600 dark:bg-green-500 text-white rounded-md hover:bg-green-700 dark:hover:bg-green-600 disabled:opacity-50"
+                            >
+                                <svg v-if="exporting" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                {{ exporting ? 'Exporting...' : 'Export JPEG' }}
+                            </button>
                             <div v-if="form.platforms.length > 0" class="flex gap-2 flex-wrap mt-3">
                                 <button
                                     v-for="platform in form.platforms"
@@ -788,14 +798,15 @@ onUnmounted(() => {
                             </div>
                         </div>
 
-                        <div v-if="form.platforms.length === 0" class="text-center text-gray-500 dark:text-gray-400 py-12">
+                        <div ref="mockupRef">
+                            <div v-if="form.platforms.length === 0" class="text-center text-gray-500 dark:text-gray-400 py-12">
                             Select a platform to see the mockup preview
                         </div>
 
                         <!-- Instagram Feed Preview -->
                         <div
                             v-else-if="(previewPlatform || form.platforms[0]).includes('instagram_feed')"
-                            class="max-w-sm mx-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
+                            class="w-full max-w-[280px] mx-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
                         >
                             <!-- Header -->
                             <div class="flex items-center p-3">
@@ -876,7 +887,7 @@ onUnmounted(() => {
                         <!-- Facebook Feed Preview -->
                         <div
                             v-else-if="(previewPlatform || form.platforms[0]).includes('facebook_feed')"
-                            class="max-w-sm mx-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
+                            class="w-full max-w-[280px] mx-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
                         >
                             <!-- Header -->
                             <div class="flex items-center p-3">
@@ -1204,54 +1215,67 @@ onUnmounted(() => {
                                     </svg>
                                 </div>
                             </button>
-                            <!-- Bottom gradient overlay (reduced height) -->
-                            <div class="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/50 to-transparent pointer-events-none"></div>
+                            <!-- Bottom gradient overlay -->
+                            <div class="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/70 via-black/30 to-transparent pointer-events-none"></div>
                             <!-- Right sidebar actions -->
-                            <div class="absolute right-2 bottom-16 flex flex-col items-center gap-4 drop-shadow-lg">
+                            <div class="absolute right-3 bottom-24 flex flex-col items-center gap-5 drop-shadow-lg">
+                                <!-- Like -->
                                 <div class="flex flex-col items-center">
-                                    <svg class="w-6 h-6 text-white drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
-                                    </svg>
-                                    <span class="text-white text-xs mt-1 drop-shadow-md">1.2K</span>
+                                    <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                                        <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M2 20h2c.55 0 1-.45 1-1v-9c0-.55-.45-1-1-1H2v11zm19.83-7.12c.11-.25.17-.52.17-.8V11c0-1.1-.9-2-2-2h-5.5l.92-4.65c.05-.22.02-.46-.08-.66-.23-.45-.52-.86-.88-1.22L14 2 7.59 8.41C7.21 8.79 7 9.3 7 9.83v7.84C7 18.95 8.05 20 9.34 20h8.11c.7 0 1.36-.37 1.72-.97l2.66-6.15z"/>
+                                        </svg>
+                                    </div>
+                                    <span class="text-white text-xs mt-1 font-medium drop-shadow-md">1.2K</span>
                                 </div>
+                                <!-- Comment -->
                                 <div class="flex flex-col items-center">
-                                    <svg class="w-6 h-6 text-white drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-                                    </svg>
-                                    <span class="text-white text-xs mt-1 drop-shadow-md">48</span>
+                                    <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                                        <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+                                        </svg>
+                                    </div>
+                                    <span class="text-white text-xs mt-1 font-medium drop-shadow-md">48</span>
                                 </div>
+                                <!-- Share -->
                                 <div class="flex flex-col items-center">
-                                    <svg class="w-6 h-6 text-white drop-shadow-md" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8-8-8z" />
-                                    </svg>
+                                    <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                                        <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M21.707 11.293l-8-8A1 1 0 0012 4v3.545A11.015 11.015 0 002 18.5V20a1 1 0 001.784.62 11.456 11.456 0 018.216-4.073V20a1 1 0 001.707.707l8-8a1 1 0 000-1.414z"/>
+                                        </svg>
+                                    </div>
                                 </div>
+                                <!-- Music/Audio -->
                                 <div class="flex flex-col items-center">
-                                    <svg class="w-6 h-6 text-white drop-shadow-md" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
-                                    </svg>
+                                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center border-2 border-white overflow-hidden">
+                                        <svg class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                                        </svg>
+                                    </div>
                                 </div>
                             </div>
-                            <!-- Bottom content with black bar -->
-                            <div class="absolute bottom-3 left-2 right-12">
-                                <div class="bg-black/60 px-3 py-2 rounded-lg">
-                                    <div class="flex items-center mb-1.5">
-                                        <div v-if="selectedBrand?.logo_flat_url" class="w-7 h-7 rounded-full overflow-hidden">
-                                            <img :src="selectedBrand.logo_flat_url" :alt="selectedBrand.name" class="w-full h-full object-cover" />
-                                        </div>
-                                        <div v-else class="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold">
-                                            {{ facebookDisplayName.charAt(0) }}
-                                        </div>
-                                        <span class="ml-2 text-white text-sm font-semibold">{{ facebookDisplayName }}</span>
-                                        <button class="ml-2 px-2 py-0.5 bg-blue-500 rounded text-white text-xs font-semibold">Follow</button>
+                            <!-- Bottom content -->
+                            <div class="absolute bottom-4 left-3 right-14">
+                                <!-- Profile + Follow -->
+                                <div class="flex items-center mb-2">
+                                    <div v-if="selectedBrand?.logo_flat_url" class="w-9 h-9 rounded-full overflow-hidden border-2 border-white">
+                                        <img :src="selectedBrand.logo_flat_url" :alt="selectedBrand.name" class="w-full h-full object-cover" />
                                     </div>
-                                    <p class="text-white text-sm line-clamp-2">{{ truncatedCaption || 'Your caption here...' }}</p>
-                                    <!-- Audio bar -->
-                                    <div class="flex items-center mt-1.5">
-                                        <svg class="w-3 h-3 text-white mr-1" fill="currentColor" viewBox="0 0 24 24">
-                                            <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
-                                        </svg>
-                                        <span class="text-white text-xs">Original Audio</span>
+                                    <div v-else class="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-bold border-2 border-white">
+                                        {{ facebookDisplayName.charAt(0) }}
                                     </div>
+                                    <span class="ml-2 text-white text-sm font-semibold drop-shadow-md">{{ facebookDisplayName }}</span>
+                                    <span class="mx-1 text-white/60">·</span>
+                                    <button class="text-white text-sm font-semibold drop-shadow-md">Follow</button>
+                                </div>
+                                <!-- Caption -->
+                                <p class="text-white text-sm drop-shadow-md line-clamp-2 mb-2">{{ truncatedCaption || 'Your caption here...' }}</p>
+                                <!-- Audio bar -->
+                                <div class="flex items-center">
+                                    <svg class="w-4 h-4 text-white mr-2" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                                    </svg>
+                                    <span class="text-white text-xs drop-shadow-md">Original audio · {{ facebookDisplayName }}</span>
                                 </div>
                             </div>
                         </div>
@@ -1374,6 +1398,40 @@ onUnmounted(() => {
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+
+                    <!-- Platform Warnings (below preview for visibility) -->
+                    <div v-if="validation.errors.length > 0 || validation.warnings.length > 0" class="mt-4 space-y-2">
+                        <!-- Errors (blocking) -->
+                        <div
+                            v-for="(error, index) in validation.errors"
+                            :key="'error-' + index"
+                            class="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+                        >
+                            <svg class="w-5 h-5 text-red-500 dark:text-red-400 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                            </svg>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium text-red-800 dark:text-red-300">{{ error.platformName }}</p>
+                                <p class="text-sm text-red-600 dark:text-red-400">{{ error.message }}</p>
+                            </div>
+                        </div>
+
+                        <!-- Warnings (non-blocking) -->
+                        <div
+                            v-for="(warning, index) in validation.warnings"
+                            :key="'warning-' + index"
+                            class="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg"
+                        >
+                            <svg class="w-5 h-5 text-amber-500 dark:text-amber-400 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            </svg>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium text-amber-800 dark:text-amber-300">{{ warning.platformName }}</p>
+                                <p class="text-sm text-amber-600 dark:text-amber-400">{{ warning.message }}</p>
                             </div>
                         </div>
                     </div>
@@ -1521,13 +1579,6 @@ onUnmounted(() => {
                                                 <path d="M8 5v14l11-7z" />
                                             </svg>
                                         </button>
-                                    </div>
-                                    <!-- Video duration badge -->
-                                    <div
-                                        v-if="isVideo(media) && media.duration && media.status !== 'processing'"
-                                        class="absolute bottom-1 right-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded"
-                                    >
-                                        {{ formatDuration(media.duration) }}
                                     </div>
                                     <!-- Selected overlay -->
                                     <div
