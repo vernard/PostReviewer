@@ -1,13 +1,8 @@
 # To Do
-- [ ] Users should be limited in some way to the file size they take on the server. We can't just give them unlimited disk space. Maybe it can be set per brand? This should be planned with how we charge customers. That needs different & deeper planning.
-- [ ] Support Meta ad placement, but this will add more fields. We should consider how to handle this without making things complicated. Needs to be on home page too.
-- [ ] Improve home page to explain how the app works, who it's for, and basically compel them to try the app instead of just telling them what it is. 
-- [ ] Need make multi-user per brand work.
-- [ ] It should be possible to add brand logo when creating new brand. Also, it should be easy to assign people into it.
-- [ ] Blog feature? Thinking if this should be separate (like HUGO).
-- [ ] Add a payment gateway (Paddle, but may also use Xendit, PayPal)
 
 ## In Progress
+- [ ] Users should be limited in some way to the file size they take on the server. We can't just give them unlimited disk space. Maybe it can be set per brand? This should be planned with how we charge customers. That needs different & deeper planning.
+- [ ] Improve home page to explain how the app works, who it's for, and compel them to try the app
 
 ## Paused
 - [ ] Make it easy to create multiple posts.
@@ -16,8 +11,14 @@
     - Show a table view above for each post, where they can copy paste multiple captions
 
 ## Backlog
+- [ ] Support Meta ad placement, but this will add more fields. We should consider how to handle this without making things complicated. Needs to be on home page too.
+- [ ] Blog feature? Thinking if this should be separate (like HUGO).
+- [ ] Add a payment gateway (Paddle, but may also use Xendit, PayPal)
+
 
 ## For Testing
+- [ ] Multi-user per brand - Already fully implemented: brand_user pivot table, hasBrandAccess() method, add/remove users via Brand detail page, posts/brands filtered by access. Managers see all agency brands, creators/reviewers see only assigned brands.
+- [ ] Sync BatchCreate.vue with Create.vue - Added facebook_reel platform and fixed preview condition for reels
 - [ ] SEO setup - Added robots.txt (blocks /api/ and /storage/), sitemap.xml, meta tags, Open Graph, Twitter Cards, and JSON-LD structured data. Submit sitemap to Google Search Console.
 - [ ] Homepage usage tracking - Tracks file uploads and exports by IP/user. Shows signup prompt after 3 uses. Admin dashboard shows total/today/weekly stats, unique visitors, conversions, actions breakdown, and 7-day chart.
 - [ ] Email-only review for external reviewers - Invite clients via email to approve posts without registering. "Invite Reviewers" button on pending posts, submit modal with reviewer emails, brand default reviewers saved. Run migration: `docker compose exec app php artisan migrate`
@@ -32,6 +33,7 @@
 - [ ] Implement rate limiting for API endpoints (login: 5/min, register: 3/min, invitation: 5/min, public-approval: 10/min)
 
 ## Done
+- [x] Brand logo on creation + user assignment - Logo upload and team member selection available in create brand modal
 - [x] Dynamic background color for letterboxing - samples edge colors from images instead of black bars for a more natural look
 - [x] Implement video processing job dispatch (ProcessVideo job extracts dimensions, duration, generates thumbnails via ffmpeg)
 - [x] Bug tracking setup (Sentry) for both Laravel backend and Vue frontend - just add SENTRY_LARAVEL_DSN and VITE_SENTRY_DSN to .env
