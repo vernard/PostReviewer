@@ -40,6 +40,7 @@ const showSuccessModal = ref(false);
 const platforms = [
     { id: 'facebook_feed', name: 'Facebook Feed', icon: 'FB' },
     { id: 'facebook_story', name: 'Facebook Story', icon: 'FB' },
+    { id: 'facebook_reel', name: 'Facebook Reel', icon: 'FB' },
     { id: 'instagram_feed', name: 'Instagram Feed', icon: 'IG' },
     { id: 'instagram_story', name: 'Instagram Story', icon: 'IG' },
     { id: 'instagram_reel', name: 'Instagram Reel', icon: 'IG' },
@@ -716,7 +717,7 @@ onMounted(() => {
 
                                 <!-- Story/Reel placeholders -->
                                 <div
-                                    v-else-if="previewPlatform.includes('story') || previewPlatform === 'instagram_reel'"
+                                    v-else-if="previewPlatform.includes('story') || previewPlatform.includes('reel')"
                                     class="max-w-[280px] mx-auto bg-black rounded-2xl overflow-hidden aspect-[9/16] relative"
                                 >
                                     <img :src="selectedPost.media.url" class="w-full h-full object-cover" />
