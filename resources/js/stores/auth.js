@@ -2,8 +2,10 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { authApi } from '@/services/api';
 import router from '@/router';
+import { useBrandStore } from './brand';
 
 export const useAuthStore = defineStore('auth', () => {
+    const getBrandStore = () => useBrandStore();
     const user = ref(null);
     const token = ref(localStorage.getItem('auth_token'));
     const loading = ref(false);
@@ -21,6 +23,13 @@ export const useAuthStore = defineStore('auth', () => {
             loading.value = true;
             const response = await authApi.user();
             user.value = response.data.user;
+
+            // Initialize brand store after user is loaded
+            const brandStore = getBrandStore();
+            await brandStore.fetchBrands();
+
+            // Subscribe to real-time brand updates
+            brandStore.subscribeToChannel(user.value?.agency_id);
         } catch (err) {
             console.error('Failed to fetch user:', err);
             logout();
@@ -38,6 +47,11 @@ export const useAuthStore = defineStore('auth', () => {
             token.value = response.data.token;
             user.value = response.data.user;
             localStorage.setItem('auth_token', token.value);
+
+            // Initialize brand store after login
+            const brandStore = getBrandStore();
+            await brandStore.fetchBrands();
+            brandStore.subscribeToChannel(user.value?.agency_id);
 
             router.push('/dashboard');
         } catch (err) {
@@ -57,6 +71,11 @@ export const useAuthStore = defineStore('auth', () => {
             token.value = response.data.token;
             user.value = response.data.user;
             localStorage.setItem('auth_token', token.value);
+
+            // Initialize brand store after registration
+            const brandStore = getBrandStore();
+            await brandStore.fetchBrands();
+            brandStore.subscribeToChannel(user.value?.agency_id);
 
             router.push('/dashboard');
         } catch (err) {
@@ -78,6 +97,11 @@ export const useAuthStore = defineStore('auth', () => {
             user.value = null;
             token.value = null;
             localStorage.removeItem('auth_token');
+
+            // Reset brand store on logout
+            const brandStore = getBrandStore();
+            brandStore.reset();
+
             router.push('/login');
         }
     }
@@ -91,6 +115,11 @@ export const useAuthStore = defineStore('auth', () => {
             token.value = response.data.token;
             user.value = response.data.user;
             localStorage.setItem('auth_token', token.value);
+
+            // Initialize brand store after accepting invitation
+            const brandStore = getBrandStore();
+            await brandStore.fetchBrands();
+            brandStore.subscribeToChannel(user.value?.agency_id);
 
             router.push('/dashboard');
         } catch (err) {
