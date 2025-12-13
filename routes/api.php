@@ -50,6 +50,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Agency
     Route::get('/agency', [AgencyController::class, 'show']);
     Route::put('/agency', [AgencyController::class, 'update']);
+    Route::get('/agency/storage', [AgencyController::class, 'storage']);
 
     // Users / Team
     Route::get('/users', [UserController::class, 'index']);
@@ -108,5 +109,6 @@ Route::middleware(['auth:sanctum', 'super-admin'])->prefix('admin')->group(funct
     Route::get('/dashboard', [AdminController::class, 'dashboard']);
     Route::get('/users', [AdminController::class, 'users']);
     Route::get('/agencies', [AdminController::class, 'agencies']);
+    Route::put('/agencies/{agency}/quota', [AdminController::class, 'updateAgencyQuota']);
     Route::post('/impersonate/{user}', [AdminController::class, 'impersonate']);
 });

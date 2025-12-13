@@ -90,6 +90,16 @@ class MediaController extends Controller
             ], 422);
         }
 
+        // Check agency storage quota
+        $agency = $brand->agency;
+        if ($agency && !$agency->hasStorageAvailable($file->getSize())) {
+            return response()->json([
+                'message' => 'Storage quota exceeded. Please delete some files or contact support.',
+                'storage_used' => $agency->storage_used_formatted,
+                'storage_quota' => $agency->storage_quota_formatted,
+            ], 422);
+        }
+
         // Store file
         $path = $file->store("brands/{$brand->id}/media", 'public');
 
@@ -111,6 +121,11 @@ class MediaController extends Controller
             $this->processImage($media);
         } else {
             ProcessVideo::dispatch($media);
+        }
+
+        // Update agency storage usage
+        if ($agency) {
+            $agency->incrementStorageUsed($file->getSize());
         }
 
         return response()->json([
@@ -160,7 +175,15 @@ class MediaController extends Controller
             }
         }
 
+        // Update agency storage usage
+        $agency = $media->brand->agency;
+        $mediaSize = $media->size;
+
         $media->delete();
+
+        if ($agency) {
+            $agency->decrementStorageUsed($mediaSize);
+        }
 
         return response()->json([
             'message' => 'Media deleted successfully.',

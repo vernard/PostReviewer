@@ -2,7 +2,8 @@
 import { ref, onMounted, watch } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { brandApi, userApi } from '@/services/api';
+import StorageIndicator from '@/components/StorageIndicator.vue';
+import { brandApi, userApi, agencyApi } from '@/services/api';
 import { useAuthStore } from '@/stores/auth';
 import { useBrandStore } from '@/stores/brand';
 
@@ -17,6 +18,7 @@ const loadingUsers = ref(false);
 const showCreateModal = ref(false);
 const creating = ref(false);
 const error = ref('');
+const storage = ref(null);
 
 const form = ref({
     name: '',
@@ -36,6 +38,15 @@ const fetchBrands = async () => {
         console.error('Failed to fetch brands:', err);
     } finally {
         loading.value = false;
+    }
+};
+
+const fetchStorage = async () => {
+    try {
+        const response = await agencyApi.storage();
+        storage.value = response.data;
+    } catch (err) {
+        console.error('Failed to fetch storage:', err);
     }
 };
 
@@ -151,7 +162,10 @@ const createBatch = (brand) => {
     router.push('/posts/batch-create');
 };
 
-onMounted(fetchBrands);
+onMounted(() => {
+    fetchBrands();
+    fetchStorage();
+});
 </script>
 
 <template>
@@ -169,6 +183,17 @@ onMounted(fetchBrands);
                         </svg>
                         Add Brand
                     </button>
+                </div>
+
+                <!-- Storage Indicator -->
+                <div v-if="storage" class="mt-4 w-64">
+                    <StorageIndicator
+                        :used="storage.storage_used"
+                        :quota="storage.storage_quota"
+                        :used-formatted="storage.storage_used_formatted"
+                        :quota-formatted="storage.storage_quota_formatted"
+                        compact
+                    />
                 </div>
             </div>
 

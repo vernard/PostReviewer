@@ -52,6 +52,7 @@ export const agencyApi = {
     get: () => api.get('/agency'),
     update: (data) => api.put('/agency', data),
     dashboardStats: () => api.get('/dashboard/stats'),
+    storage: () => api.get('/agency/storage'),
 };
 
 // User API
@@ -157,5 +158,6 @@ export const adminApi = {
     dashboard: () => api.get('/admin/dashboard'),
     users: (params) => api.get('/admin/users', { params }),
     agencies: (params) => api.get('/admin/agencies', { params }),
+    updateAgencyQuota: (agencyId, quota) => api.put(`/admin/agencies/${agencyId}/quota`, { storage_quota: quota }),
     impersonate: (userId) => api.post(`/admin/impersonate/${userId}`),
 };

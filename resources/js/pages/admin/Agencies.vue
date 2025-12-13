@@ -1,6 +1,7 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, computed } from 'vue';
 import AppLayout from '@/layouts/AppLayout.vue';
+import StorageIndicator from '@/components/StorageIndicator.vue';
 import { adminApi } from '@/services/api';
 
 const agencies = ref([]);
@@ -12,6 +13,65 @@ const sortBy = ref('storage_bytes');
 const sortDirection = ref('desc');
 const search = ref('');
 const currentPage = ref(1);
+
+// Quota edit modal
+const showQuotaModal = ref(false);
+const editingAgency = ref(null);
+const quotaInput = ref('');
+const quotaUnit = ref('GB');
+const saving = ref(false);
+
+const quotaUnits = [
+    { value: 'MB', multiplier: 1048576 },
+    { value: 'GB', multiplier: 1073741824 },
+    { value: 'TB', multiplier: 1099511627776 },
+];
+
+const openQuotaModal = (agency) => {
+    editingAgency.value = agency;
+    // Convert bytes to best unit
+    const quota = agency.storage_quota || 1073741824;
+    if (quota >= 1099511627776) {
+        quotaUnit.value = 'TB';
+        quotaInput.value = (quota / 1099511627776).toFixed(1);
+    } else if (quota >= 1073741824) {
+        quotaUnit.value = 'GB';
+        quotaInput.value = (quota / 1073741824).toFixed(1);
+    } else {
+        quotaUnit.value = 'MB';
+        quotaInput.value = (quota / 1048576).toFixed(0);
+    }
+    showQuotaModal.value = true;
+};
+
+const closeQuotaModal = () => {
+    showQuotaModal.value = false;
+    editingAgency.value = null;
+    quotaInput.value = '';
+};
+
+const saveQuota = async () => {
+    if (!editingAgency.value || !quotaInput.value) return;
+
+    const unit = quotaUnits.find(u => u.value === quotaUnit.value);
+    const quotaBytes = Math.round(parseFloat(quotaInput.value) * unit.multiplier);
+
+    try {
+        saving.value = true;
+        await adminApi.updateAgencyQuota(editingAgency.value.id, quotaBytes);
+        // Update local state
+        const idx = agencies.value.findIndex(a => a.id === editingAgency.value.id);
+        if (idx !== -1) {
+            agencies.value[idx].storage_quota = quotaBytes;
+        }
+        closeQuotaModal();
+    } catch (err) {
+        console.error('Failed to update quota:', err);
+        error.value = err.response?.data?.message || 'Failed to update quota';
+    } finally {
+        saving.value = false;
+    }
+};
 
 const sortOptions = [
     { value: 'storage_bytes', label: 'Storage Used' },
@@ -210,11 +270,18 @@ onMounted(fetchAgencies);
                                     <p class="text-xl font-bold text-gray-900 dark:text-white">{{ agency.media_count || 0 }}</p>
                                     <p class="text-xs text-gray-500 dark:text-gray-400">Files</p>
                                 </div>
-                                <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center" :class="{ 'bg-orange-50 dark:bg-orange-900/20': agency.storage_bytes > 500 * 1024 * 1024 }">
-                                    <p class="text-xl font-bold" :class="agency.storage_bytes > 500 * 1024 * 1024 ? 'text-orange-600 dark:text-orange-400' : 'text-gray-900 dark:text-white'">
+                                <div
+                                    @click.stop="openQuotaModal(agency)"
+                                    class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600/50 transition-colors"
+                                    :class="{ 'bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/30': agency.storage_quota && agency.storage_bytes >= agency.storage_quota * 0.8 }"
+                                    title="Click to edit quota"
+                                >
+                                    <p class="text-xl font-bold" :class="agency.storage_quota && agency.storage_bytes >= agency.storage_quota * 0.8 ? 'text-orange-600 dark:text-orange-400' : 'text-gray-900 dark:text-white'">
                                         {{ formatBytes(agency.storage_bytes) }}
                                     </p>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400">Storage</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                                        / {{ formatBytes(agency.storage_quota || 1073741824) }}
+                                    </p>
                                 </div>
                             </div>
 
@@ -318,6 +385,79 @@ onMounted(fetchAgencies);
                             </svg>
                         </button>
                     </nav>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quota Edit Modal -->
+        <div v-if="showQuotaModal" class="fixed inset-0 z-50 overflow-y-auto">
+            <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+                <div class="fixed inset-0 bg-gray-500 dark:bg-gray-900 bg-opacity-75 dark:bg-opacity-75 transition-opacity" @click="closeQuotaModal"></div>
+
+                <div class="relative inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-primary-100 dark:bg-primary-900/30 sm:mx-0 sm:h-10 sm:w-10">
+                            <svg class="h-6 w-6 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+                            </svg>
+                        </div>
+                        <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">
+                                Edit Storage Quota
+                            </h3>
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                                {{ editingAgency?.name }}
+                            </p>
+
+                            <div class="mt-4">
+                                <div class="mb-4">
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">
+                                        Current usage: <span class="font-medium text-gray-900 dark:text-white">{{ formatBytes(editingAgency?.storage_bytes || 0) }}</span>
+                                    </p>
+                                </div>
+
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Storage Quota
+                                </label>
+                                <div class="flex gap-2">
+                                    <input
+                                        v-model="quotaInput"
+                                        type="number"
+                                        step="0.1"
+                                        min="0"
+                                        class="flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                                        placeholder="Enter quota"
+                                    />
+                                    <select
+                                        v-model="quotaUnit"
+                                        class="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                                    >
+                                        <option v-for="unit in quotaUnits" :key="unit.value" :value="unit.value">
+                                            {{ unit.value }}
+                                        </option>
+                                    </select>
+                                </div>
+                                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                                    Common values: 500 MB (trial), 5 GB (starter), 50 GB (pro), 500 GB (enterprise)
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse gap-3">
+                        <button
+                            @click="saveQuota"
+                            :disabled="saving || !quotaInput"
+                            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary-600 text-base font-medium text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {{ saving ? 'Saving...' : 'Save' }}
+                        </button>
+                        <button
+                            @click="closeQuotaModal"
+                            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-700 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:mt-0 sm:w-auto sm:text-sm"
+                        >
+                            Cancel
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

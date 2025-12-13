@@ -42,6 +42,21 @@ class AgencyController extends Controller
         ]);
     }
 
+    public function storage(Request $request): JsonResponse
+    {
+        $agency = $request->user()->agency;
+
+        return response()->json([
+            'storage_used' => $agency->storage_used,
+            'storage_quota' => $agency->storage_quota,
+            'storage_used_formatted' => $agency->storage_used_formatted,
+            'storage_quota_formatted' => $agency->storage_quota_formatted,
+            'storage_percentage' => $agency->storage_percentage,
+            'is_near_limit' => $agency->storage_percentage >= 80,
+            'is_over_limit' => $agency->storage_percentage >= 100,
+        ]);
+    }
+
     public function dashboardStats(Request $request): JsonResponse
     {
         $user = $request->user();

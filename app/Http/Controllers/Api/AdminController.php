@@ -100,6 +100,22 @@ class AdminController extends Controller
         ]);
     }
 
+    public function updateAgencyQuota(Request $request, Agency $agency)
+    {
+        $request->validate([
+            'storage_quota' => ['required', 'integer', 'min:0'],
+        ]);
+
+        $agency->update([
+            'storage_quota' => $request->storage_quota,
+        ]);
+
+        return response()->json([
+            'message' => 'Storage quota updated successfully.',
+            'agency' => $agency->fresh(),
+        ]);
+    }
+
     public function agencies(Request $request)
     {
         // Sort options
