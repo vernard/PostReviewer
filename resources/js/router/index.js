@@ -126,6 +126,25 @@ const routes = [
         component: () => import('@/pages/public/ApprovalReview.vue'),
         meta: { public: true },
     },
+    {
+        path: '/post-review/:token',
+        name: 'public.post-review',
+        component: () => import('@/pages/public/PostReview.vue'),
+        meta: { public: true },
+    },
+    // Admin routes (super admin only)
+    {
+        path: '/admin',
+        name: 'admin.dashboard',
+        component: () => import('@/pages/admin/Dashboard.vue'),
+        meta: { requiresAuth: true, requiresSuperAdmin: true },
+    },
+    {
+        path: '/admin/users',
+        name: 'admin.users',
+        component: () => import('@/pages/admin/Users.vue'),
+        meta: { requiresAuth: true, requiresSuperAdmin: true },
+    },
 ];
 
 const router = createRouter({
@@ -178,11 +197,6 @@ router.beforeEach(async (to, from, next) => {
         if (!brandStore.activeBrand && brandStore.hasBrands === false) {
             return next({ name: 'brands' });
         }
-    }
-
-    // Redirect home to dashboard if authenticated
-    if (to.name === 'home' && isAuthenticated) {
-        return next({ name: 'dashboard' });
     }
 
     next();
