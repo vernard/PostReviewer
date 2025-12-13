@@ -32,6 +32,12 @@ export const PLATFORM_LIMITS = {
         maxDuration: 20,
         recommendedAspectRatios: ['9:16'],
     },
+    facebook_reel: {
+        name: 'Facebook Reel',
+        minDuration: 3,
+        maxDuration: 90,
+        recommendedAspectRatios: ['9:16'],
+    },
 };
 
 /**

@@ -5,6 +5,7 @@ import Footer from '@/components/Footer.vue';
 import { useDarkMode } from '@/composables/useDarkMode';
 import { useAuthStore } from '@/stores/auth';
 import { extractEdgeColor } from '@/composables/useEdgeColor';
+import { validatePost, getCaptionStatus } from '@/utils/platformValidation';
 import html2canvas from 'html2canvas-pro';
 
 const { isDark, toggle: toggleDarkMode } = useDarkMode();
@@ -20,11 +21,14 @@ const isVideo = ref(false);
 const platforms = [
     { id: 'facebook_feed', name: 'Facebook Feed', icon: 'FB' },
     { id: 'facebook_story', name: 'Facebook Story', icon: 'FB' },
+    { id: 'facebook_reel', name: 'Facebook Reel', icon: 'FB' },
     { id: 'instagram_feed', name: 'Instagram Feed', icon: 'IG' },
     { id: 'instagram_story', name: 'Instagram Story', icon: 'IG' },
+    { id: 'instagram_reel', name: 'Instagram Reel', icon: 'IG' },
 ];
 const isPlayingVideo = ref(false);
 const videoDuration = ref(0);
+const videoThumbnail = ref(null);
 const brandName = ref('');
 const edgeColor = ref('rgb(0, 0, 0)');
 
@@ -43,10 +47,34 @@ watch(previewUrl, async (url) => {
         edgeColor.value = 'rgb(0, 0, 0)';
     }
 });
+
+// Reset video playback when platform changes
+watch(selectedPlatform, () => {
+    isPlayingVideo.value = false;
+});
 const brandLogo = ref(null);
 const brandLogoUrl = ref(null);
 const imageDimensions = ref({ width: 0, height: 0 });
 const isVertical = computed(() => imageDimensions.value.height > imageDimensions.value.width * 1.2);
+
+// Platform validation
+const mediaInfo = computed(() => {
+    if (!selectedFile.value) return null;
+    return {
+        type: isVideo.value ? 'video' : 'image',
+        width: imageDimensions.value.width,
+        height: imageDimensions.value.height,
+        duration: videoDuration.value,
+    };
+});
+
+const validation = computed(() => {
+    return validatePost([selectedPlatform.value], mediaInfo.value, caption.value);
+});
+
+const captionStatus = computed(() => {
+    return getCaptionStatus([selectedPlatform.value], caption.value.length);
+});
 
 const handleLogoChange = (event) => {
     const file = event.target.files[0];
@@ -89,6 +117,7 @@ const processFile = (file) => {
     selectedFile.value = file;
     isVideo.value = file.type.startsWith('video/');
     previewUrl.value = URL.createObjectURL(file);
+    videoThumbnail.value = null;
 
     // Detect image dimensions
     if (file.type.startsWith('image/')) {
@@ -99,9 +128,23 @@ const processFile = (file) => {
         img.src = URL.createObjectURL(file);
     } else if (file.type.startsWith('video/')) {
         const video = document.createElement('video');
+        video.crossOrigin = 'anonymous';
         video.onloadedmetadata = () => {
             imageDimensions.value = { width: video.videoWidth, height: video.videoHeight };
             videoDuration.value = video.duration;
+            // Seek to first frame to generate thumbnail
+            video.currentTime = 0.1;
+        };
+        video.onseeked = async () => {
+            // Generate thumbnail from first frame
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            videoThumbnail.value = canvas.toDataURL('image/jpeg', 0.8);
+            // Extract edge color from thumbnail
+            edgeColor.value = await extractEdgeColor(videoThumbnail.value);
         };
         video.src = URL.createObjectURL(file);
     }
@@ -129,6 +172,7 @@ const clearPreview = () => {
     imageDimensions.value = { width: 0, height: 0 };
     isPlayingVideo.value = false;
     videoDuration.value = 0;
+    videoThumbnail.value = null;
 };
 
 const mockupRef = ref(null);
@@ -269,13 +313,13 @@ const exportAsJpeg = async () => {
                     <div class="flex flex-col gap-4">
                         <div class="order-3 lg:order-1">
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Platform</label>
-                            <div class="flex flex-wrap gap-2">
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                                 <button
                                     v-for="platform in platforms"
                                     :key="platform.id"
                                     @click="selectedPlatform = platform.id"
                                     :class="[
-                                        'px-3 py-1.5 text-xs rounded-full flex items-center gap-1.5 transition-all',
+                                        'px-3 py-2 text-xs rounded-lg flex items-center justify-center gap-1.5 transition-all',
                                         selectedPlatform === platform.id
                                             ? platform.id.startsWith('facebook')
                                                 ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 ring-2 ring-blue-400'
@@ -291,6 +335,29 @@ const exportAsJpeg = async () => {
                                     </span>
                                     {{ platform.name }}
                                 </button>
+                            </div>
+                            <!-- Platform Warnings -->
+                            <div v-if="validation.errors.length > 0 || validation.warnings.length > 0" class="mt-3 space-y-2">
+                                <div
+                                    v-for="(error, idx) in validation.errors"
+                                    :key="'error-' + idx"
+                                    class="flex items-start gap-2 text-xs bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-3 py-2 rounded-md"
+                                >
+                                    <svg class="w-4 h-4 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                                    </svg>
+                                    <span>{{ error.message }}</span>
+                                </div>
+                                <div
+                                    v-for="(warning, idx) in validation.warnings"
+                                    :key="'warning-' + idx"
+                                    class="flex items-start gap-2 text-xs bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-3 py-2 rounded-md"
+                                >
+                                    <svg class="w-4 h-4 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                    </svg>
+                                    <span>{{ warning.message }}</span>
+                                </div>
                             </div>
                         </div>
 
@@ -386,6 +453,18 @@ const exportAsJpeg = async () => {
                                     class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                                     placeholder="Write a caption..."
                                 />
+                                <div class="flex justify-end mt-1">
+                                    <span
+                                        class="text-xs"
+                                        :class="{
+                                            'text-gray-400 dark:text-gray-500': captionStatus.status === 'ok',
+                                            'text-amber-600 dark:text-amber-400': captionStatus.status === 'warning',
+                                            'text-red-600 dark:text-red-400': captionStatus.status === 'error',
+                                        }"
+                                    >
+                                        {{ caption.length.toLocaleString() }}<template v-if="captionStatus.limit"> / {{ captionStatus.limit.toLocaleString() }}</template>
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -416,7 +495,7 @@ const exportAsJpeg = async () => {
                                     </svg>
                                 </div>
                                 <!-- Image -->
-                                <div class="w-full aspect-square overflow-hidden flex items-center justify-center relative transition-colors duration-300" :style="previewUrl && !isVideo ? { backgroundColor: edgeColor } : { backgroundColor: 'rgb(0,0,0)' }">
+                                <div class="w-full aspect-square overflow-hidden flex items-center justify-center relative transition-colors duration-300" :style="{ backgroundColor: edgeColor }">
                                     <img v-if="previewUrl && !isVideo" :src="previewUrl" class="max-w-full max-h-full object-contain" />
                                     <!-- Video playing inline -->
                                     <video
@@ -428,7 +507,14 @@ const exportAsJpeg = async () => {
                                         @ended="isPlayingVideo = false"
                                     />
                                     <!-- Video thumbnail with play button -->
-                                    <div v-else-if="previewUrl && isVideo" class="w-full h-full flex items-center justify-center">
+                                    <template v-else-if="previewUrl && isVideo">
+                                        <img v-if="videoThumbnail" :src="videoThumbnail" class="max-w-full max-h-full object-contain" />
+                                        <div v-else class="w-full h-full bg-gray-900 flex items-center justify-center">
+                                            <svg class="w-8 h-8 text-gray-600 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                        </div>
                                         <button
                                             @click="isPlayingVideo = true"
                                             class="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors z-10"
@@ -443,7 +529,7 @@ const exportAsJpeg = async () => {
                                         <div v-if="videoDuration" class="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded z-20">
                                             {{ formatDuration(videoDuration) }}
                                         </div>
-                                    </div>
+                                    </template>
                                     <!-- Sample placeholder -->
                                     <div v-else class="w-full h-full bg-gradient-to-br from-pink-400 via-purple-400 to-indigo-400 flex items-center justify-center">
                                         <div class="text-center text-white">
@@ -547,7 +633,14 @@ const exportAsJpeg = async () => {
                                         @ended="isPlayingVideo = false"
                                     />
                                     <!-- Video thumbnail with play button -->
-                                    <div v-else-if="previewUrl && isVideo" class="w-full h-full flex items-center justify-center">
+                                    <template v-else-if="previewUrl && isVideo">
+                                        <img v-if="videoThumbnail" :src="videoThumbnail" class="max-h-full max-w-full object-contain" />
+                                        <div v-else class="w-full h-full bg-gray-900 flex items-center justify-center">
+                                            <svg class="w-8 h-8 text-gray-600 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                        </div>
                                         <button
                                             @click="isPlayingVideo = true"
                                             class="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors z-10"
@@ -562,7 +655,7 @@ const exportAsJpeg = async () => {
                                         <div v-if="videoDuration" class="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded z-20">
                                             {{ formatDuration(videoDuration) }}
                                         </div>
-                                    </div>
+                                    </template>
                                     <!-- Sample placeholder -->
                                     <div v-else class="w-full h-full bg-gradient-to-br from-blue-400 via-blue-500 to-indigo-500 flex items-center justify-center">
                                         <div class="text-center text-white">
@@ -629,7 +722,13 @@ const exportAsJpeg = async () => {
                                 />
                                 <!-- Video thumbnail with play button -->
                                 <template v-else-if="previewUrl && isVideo">
-                                    <div class="absolute inset-0 bg-gray-900"></div>
+                                    <img v-if="videoThumbnail" :src="videoThumbnail" class="absolute inset-0 w-full h-full object-cover" />
+                                    <div v-else class="absolute inset-0 bg-gray-900 flex items-center justify-center">
+                                        <svg class="w-8 h-8 text-gray-600 animate-spin" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                    </div>
                                     <button
                                         @click="isPlayingVideo = true"
                                         class="absolute inset-0 flex items-center justify-center z-10"
@@ -692,6 +791,202 @@ const exportAsJpeg = async () => {
                                 </div>
                             </div>
 
+                            <!-- Instagram Reel Mockup -->
+                            <div v-else-if="selectedPlatform === 'instagram_reel'" class="bg-black rounded-2xl shadow-lg overflow-hidden aspect-[9/16] w-[280px] relative">
+                                <!-- Background image/video -->
+                                <img v-if="previewUrl && !isVideo" :src="previewUrl" class="absolute inset-0 w-full h-full object-cover" />
+                                <!-- Video playing inline -->
+                                <video
+                                    v-else-if="previewUrl && isVideo && isPlayingVideo"
+                                    :src="previewUrl"
+                                    class="absolute inset-0 w-full h-full object-cover"
+                                    autoplay
+                                    @ended="isPlayingVideo = false"
+                                />
+                                <!-- Video thumbnail with play button -->
+                                <template v-else-if="previewUrl && isVideo">
+                                    <img v-if="videoThumbnail" :src="videoThumbnail" class="absolute inset-0 w-full h-full object-cover" />
+                                    <div v-else class="absolute inset-0 bg-gray-900 flex items-center justify-center">
+                                        <svg class="w-8 h-8 text-gray-600 animate-spin" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                    </div>
+                                    <button
+                                        @click="isPlayingVideo = true"
+                                        class="absolute inset-0 flex items-center justify-center z-10"
+                                    >
+                                        <div class="w-16 h-16 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors">
+                                            <svg class="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                                                <path d="M8 5v14l11-7z" />
+                                            </svg>
+                                        </div>
+                                    </button>
+                                    <!-- Duration badge -->
+                                    <div v-if="videoDuration" class="absolute top-14 right-3 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded z-20">
+                                        {{ formatDuration(videoDuration) }}
+                                    </div>
+                                </template>
+                                <div v-else class="absolute inset-0 bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 flex items-center justify-center">
+                                    <div class="text-center text-white">
+                                        <svg class="mx-auto h-16 w-16 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                        </svg>
+                                        <p class="mt-2 text-sm font-medium opacity-90">Your reel here</p>
+                                    </div>
+                                </div>
+                                <!-- Bottom gradient overlay -->
+                                <div class="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/70 to-transparent pointer-events-none"></div>
+                                <!-- Right sidebar actions -->
+                                <div class="absolute right-3 bottom-24 flex flex-col items-center gap-4 drop-shadow-lg">
+                                    <div class="flex flex-col items-center">
+                                        <svg class="w-7 h-7 text-white drop-shadow-md" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                        </svg>
+                                        <span class="text-white text-xs mt-1 drop-shadow-md">1.2K</span>
+                                    </div>
+                                    <div class="flex flex-col items-center">
+                                        <svg class="w-7 h-7 text-white drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                        </svg>
+                                        <span class="text-white text-xs mt-1 drop-shadow-md">48</span>
+                                    </div>
+                                    <div class="flex flex-col items-center">
+                                        <svg class="w-7 h-7 text-white drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                        </svg>
+                                    </div>
+                                    <div class="flex flex-col items-center">
+                                        <svg class="w-7 h-7 text-white drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
+                                        </svg>
+                                    </div>
+                                    <div class="w-7 h-7 rounded border-2 border-white overflow-hidden shadow-md">
+                                        <img v-if="brandLogoUrl" :src="brandLogoUrl" class="w-full h-full object-cover" />
+                                        <div v-else class="w-full h-full bg-gradient-to-br from-purple-500 to-pink-500"></div>
+                                    </div>
+                                </div>
+                                <!-- Bottom content -->
+                                <div class="absolute bottom-4 left-3 right-14">
+                                    <div class="flex items-center mb-2">
+                                        <div v-if="brandLogoUrl" class="w-8 h-8 rounded-full overflow-hidden">
+                                            <img :src="brandLogoUrl" :alt="displayBrandName" class="w-full h-full object-cover" />
+                                        </div>
+                                        <div v-else class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
+                                            {{ brandInitials }}
+                                        </div>
+                                        <span class="ml-2 text-white text-sm font-semibold">{{ displayBrandName }}</span>
+                                        <button class="ml-2 px-3 py-1 border border-white rounded text-white text-xs font-semibold">Follow</button>
+                                    </div>
+                                    <p class="text-white text-sm line-clamp-2">{{ truncatedCaption || 'Your caption here...' }}</p>
+                                    <!-- Audio bar -->
+                                    <div class="flex items-center mt-2">
+                                        <svg class="w-3 h-3 text-white mr-1" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
+                                        </svg>
+                                        <span class="text-white text-xs">Original Audio</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Facebook Reel Mockup -->
+                            <div v-else-if="selectedPlatform === 'facebook_reel'" class="bg-black rounded-2xl shadow-lg overflow-hidden aspect-[9/16] w-[280px] relative">
+                                <!-- Background image/video -->
+                                <img v-if="previewUrl && !isVideo" :src="previewUrl" class="absolute inset-0 w-full h-full object-cover" />
+                                <!-- Video playing inline -->
+                                <video
+                                    v-else-if="previewUrl && isVideo && isPlayingVideo"
+                                    :src="previewUrl"
+                                    class="absolute inset-0 w-full h-full object-cover"
+                                    autoplay
+                                    @ended="isPlayingVideo = false"
+                                />
+                                <!-- Video thumbnail with play button -->
+                                <template v-else-if="previewUrl && isVideo">
+                                    <img v-if="videoThumbnail" :src="videoThumbnail" class="absolute inset-0 w-full h-full object-cover" />
+                                    <div v-else class="absolute inset-0 bg-gray-900 flex items-center justify-center">
+                                        <svg class="w-8 h-8 text-gray-600 animate-spin" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                    </div>
+                                    <button
+                                        @click="isPlayingVideo = true"
+                                        class="absolute inset-0 flex items-center justify-center z-10"
+                                    >
+                                        <div class="w-16 h-16 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors">
+                                            <svg class="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                                                <path d="M8 5v14l11-7z" />
+                                            </svg>
+                                        </div>
+                                    </button>
+                                    <!-- Duration badge -->
+                                    <div v-if="videoDuration" class="absolute top-14 right-3 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded z-20">
+                                        {{ formatDuration(videoDuration) }}
+                                    </div>
+                                </template>
+                                <div v-else class="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-500 flex items-center justify-center">
+                                    <div class="text-center text-white">
+                                        <svg class="mx-auto h-16 w-16 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                        </svg>
+                                        <p class="mt-2 text-sm font-medium opacity-90">Your reel here</p>
+                                    </div>
+                                </div>
+                                <!-- Bottom gradient overlay -->
+                                <div class="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/70 to-transparent pointer-events-none"></div>
+                                <!-- Right sidebar actions -->
+                                <div class="absolute right-3 bottom-24 flex flex-col items-center gap-4 drop-shadow-lg">
+                                    <div class="flex flex-col items-center">
+                                        <svg class="w-7 h-7 text-white drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+                                        </svg>
+                                        <span class="text-white text-xs mt-1 drop-shadow-md">1.2K</span>
+                                    </div>
+                                    <div class="flex flex-col items-center">
+                                        <svg class="w-7 h-7 text-white drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                        </svg>
+                                        <span class="text-white text-xs mt-1 drop-shadow-md">48</span>
+                                    </div>
+                                    <div class="flex flex-col items-center">
+                                        <svg class="w-7 h-7 text-white drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                                        </svg>
+                                    </div>
+                                    <div class="flex flex-col items-center">
+                                        <svg class="w-7 h-7 text-white drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
+                                        </svg>
+                                    </div>
+                                    <div class="w-7 h-7 rounded border-2 border-white overflow-hidden shadow-md">
+                                        <img v-if="brandLogoUrl" :src="brandLogoUrl" class="w-full h-full object-cover" />
+                                        <div v-else class="w-full h-full bg-gradient-to-br from-blue-500 to-blue-600"></div>
+                                    </div>
+                                </div>
+                                <!-- Bottom content -->
+                                <div class="absolute bottom-4 left-3 right-14">
+                                    <div class="flex items-center mb-2">
+                                        <div v-if="brandLogoUrl" class="w-8 h-8 rounded-full overflow-hidden">
+                                            <img :src="brandLogoUrl" :alt="displayBrandNameFb" class="w-full h-full object-cover" />
+                                        </div>
+                                        <div v-else class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold">
+                                            {{ brandInitials }}
+                                        </div>
+                                        <span class="ml-2 text-white text-sm font-semibold">{{ displayBrandNameFb }}</span>
+                                        <button class="ml-2 px-3 py-1 bg-blue-500 rounded text-white text-xs font-semibold">Follow</button>
+                                    </div>
+                                    <p class="text-white text-sm line-clamp-2">{{ truncatedCaption || 'Your caption here...' }}</p>
+                                    <!-- Audio bar -->
+                                    <div class="flex items-center mt-2">
+                                        <svg class="w-3 h-3 text-white mr-1" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
+                                        </svg>
+                                        <span class="text-white text-xs">Original Audio</span>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Facebook Story Mockup -->
                             <div v-else class="bg-gray-900 rounded-2xl shadow-lg overflow-hidden aspect-[9/16] w-[280px] relative">
                                 <!-- Background image/video -->
@@ -706,7 +1001,13 @@ const exportAsJpeg = async () => {
                                 />
                                 <!-- Video thumbnail with play button -->
                                 <template v-else-if="previewUrl && isVideo">
-                                    <div class="absolute inset-0 bg-gray-900"></div>
+                                    <img v-if="videoThumbnail" :src="videoThumbnail" class="absolute inset-0 w-full h-full object-cover" />
+                                    <div v-else class="absolute inset-0 bg-gray-900 flex items-center justify-center">
+                                        <svg class="w-8 h-8 text-gray-600 animate-spin" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                    </div>
                                     <button
                                         @click="isPlayingVideo = true"
                                         class="absolute inset-0 flex items-center justify-center z-10"
