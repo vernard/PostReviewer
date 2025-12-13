@@ -8,9 +8,59 @@ use App\Models\Brand;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class BrandController extends Controller
 {
+    /**
+     * Flatten a PNG image to JPG with white background.
+     * Returns the path to the flattened image, or null if not a PNG.
+     */
+    private function flattenLogoToJpg(string $originalPath): ?string
+    {
+        $fullPath = Storage::disk('public')->path($originalPath);
+        $mimeType = mime_content_type($fullPath);
+
+        // Only process PNG files
+        if ($mimeType !== 'image/png') {
+            return null;
+        }
+
+        $png = imagecreatefrompng($fullPath);
+        if (!$png) {
+            return null;
+        }
+
+        $width = imagesx($png);
+        $height = imagesy($png);
+
+        // Create a new image with white background
+        $jpg = imagecreatetruecolor($width, $height);
+        $white = imagecolorallocate($jpg, 255, 255, 255);
+        imagefill($jpg, 0, 0, $white);
+
+        // Preserve transparency by compositing PNG onto white background
+        imagealphablending($jpg, true);
+        imagecopy($jpg, $png, 0, 0, 0, 0, $width, $height);
+
+        // Generate flattened file path
+        $flatPath = preg_replace('/\.png$/i', '_flat.jpg', $originalPath);
+        $flatFullPath = Storage::disk('public')->path($flatPath);
+
+        // Save as JPG with high quality
+        imagejpeg($jpg, $flatFullPath, 95);
+
+        // Clean up
+        imagedestroy($png);
+        imagedestroy($jpg);
+
+        // Set proper ownership
+        chown($flatFullPath, 33);
+        chgrp($flatFullPath, 33);
+
+        return $flatPath;
+    }
+
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -52,6 +102,7 @@ class BrandController extends Controller
         // Handle logo upload
         if ($request->hasFile('logo')) {
             $data['logo'] = $request->file('logo')->store('brands', 'public');
+            $data['logo_flat'] = $this->flattenLogoToJpg($data['logo']);
         }
 
         $brand = Brand::create([
@@ -121,6 +172,7 @@ class BrandController extends Controller
 
         if ($request->hasFile('logo')) {
             $data['logo'] = $request->file('logo')->store('brands', 'public');
+            $data['logo_flat'] = $this->flattenLogoToJpg($data['logo']);
         }
 
         $brand->update($data);

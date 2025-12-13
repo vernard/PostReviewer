@@ -19,6 +19,7 @@ class Brand extends Model
         'slug',
         'description',
         'logo',
+        'logo_flat',
         'color_scheme',
         'profile_name',
         'profile_avatar',
@@ -32,11 +33,20 @@ class Brand extends Model
         'settings' => 'array',
     ];
 
-    protected $appends = ['logo_url'];
+    protected $appends = ['logo_url', 'logo_flat_url'];
 
     public function getLogoUrlAttribute(): ?string
     {
         return $this->logo ? asset('storage/' . $this->logo) : null;
+    }
+
+    public function getLogoFlatUrlAttribute(): ?string
+    {
+        // Return flattened version if available, otherwise fall back to original
+        if ($this->logo_flat) {
+            return asset('storage/' . $this->logo_flat);
+        }
+        return $this->logo_url;
     }
 
     protected static function boot()
