@@ -66,6 +66,12 @@ const routes = [
         meta: { requiresAuth: true },
     },
     {
+        path: '/posts/batch-create',
+        name: 'posts.batch-create',
+        component: () => import('@/pages/posts/BatchCreate.vue'),
+        meta: { requiresAuth: true },
+    },
+    {
         path: '/posts/:id',
         name: 'posts.show',
         component: () => import('@/pages/posts/Show.vue'),
@@ -75,6 +81,18 @@ const routes = [
         path: '/posts/:id/edit',
         name: 'posts.edit',
         component: () => import('@/pages/posts/Edit.vue'),
+        meta: { requiresAuth: true },
+    },
+    {
+        path: '/collections',
+        name: 'collections',
+        component: () => import('@/pages/collections/Index.vue'),
+        meta: { requiresAuth: true },
+    },
+    {
+        path: '/collections/:id',
+        name: 'collections.show',
+        component: () => import('@/pages/collections/Show.vue'),
         meta: { requiresAuth: true },
     },
     {
@@ -95,6 +113,12 @@ const routes = [
         component: () => import('@/pages/settings/Index.vue'),
         meta: { requiresAuth: true },
     },
+    {
+        path: '/review/:token',
+        name: 'public.approval',
+        component: () => import('@/pages/public/ApprovalReview.vue'),
+        meta: { public: true },
+    },
 ];
 
 const router = createRouter({
@@ -107,6 +131,11 @@ let authInitialized = false;
 
 router.beforeEach(async (to, from, next) => {
     const authStore = useAuthStore();
+
+    // Public routes don't need auth checks
+    if (to.meta.public) {
+        return next();
+    }
 
     // Initialize auth on first navigation
     if (!authInitialized && authStore.token) {

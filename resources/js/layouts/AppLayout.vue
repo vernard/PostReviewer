@@ -14,6 +14,7 @@ const userMenuOpen = ref(false);
 const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: 'home' },
     { name: 'Posts', href: '/posts', icon: 'document' },
+    { name: 'Collections', href: '/collections', icon: 'folder' },
     { name: 'Approvals', href: '/approvals', icon: 'check-circle', requiresReview: true },
     { name: 'Media Library', href: '/media', icon: 'photograph' },
     { name: 'Brands', href: '/brands', icon: 'office-building' },
@@ -139,6 +140,10 @@ const logout = async () => {
                             <!-- Posts -->
                             <svg v-if="item.icon === 'document'" :class="['w-6 h-6 transition duration-75', isActive(item.href) ? 'text-primary-700 dark:text-primary-500' : 'text-gray-500 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white']" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd" />
+                            </svg>
+                            <!-- Collections -->
+                            <svg v-if="item.icon === 'folder'" :class="['w-6 h-6 transition duration-75', isActive(item.href) ? 'text-primary-700 dark:text-primary-500' : 'text-gray-500 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white']" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
                             </svg>
                             <!-- Approvals -->
                             <svg v-if="item.icon === 'check-circle'" :class="['w-6 h-6 transition duration-75', isActive(item.href) ? 'text-primary-700 dark:text-primary-500' : 'text-gray-500 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white']" fill="currentColor" viewBox="0 0 20 20">

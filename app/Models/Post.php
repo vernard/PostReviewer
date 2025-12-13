@@ -16,6 +16,7 @@ class Post extends Model
 
     protected $fillable = [
         'brand_id',
+        'collection_id',
         'created_by',
         'title',
         'caption',
@@ -34,6 +35,11 @@ class Post extends Model
     public function brand(): BelongsTo
     {
         return $this->belongsTo(Brand::class);
+    }
+
+    public function collection(): BelongsTo
+    {
+        return $this->belongsTo(Collection::class);
     }
 
     public function creator(): BelongsTo

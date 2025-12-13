@@ -228,19 +228,36 @@ onMounted(async () => {
                                 <p class="text-gray-500 dark:text-gray-400">{{ brand?.description || 'No description' }}</p>
                             </div>
                         </div>
-                        <div v-if="canManage" class="flex items-center gap-2">
-                            <button
-                                @click="showEditModal = true"
-                                class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                        <div class="flex items-center gap-2">
+                            <!-- Post Creation Actions -->
+                            <RouterLink
+                                :to="`/posts/create?brand_id=${brandId}`"
+                                class="px-4 py-2 bg-primary-600 dark:bg-primary-500 text-white rounded-md hover:bg-primary-700 dark:hover:bg-primary-600"
                             >
-                                Edit
-                            </button>
-                            <button
-                                @click="deleteBrand"
-                                class="px-4 py-2 border border-red-300 dark:border-red-800 rounded-md text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30"
+                                Create Post
+                            </RouterLink>
+                            <RouterLink
+                                :to="`/posts/batch-create?brand_id=${brandId}`"
+                                class="px-4 py-2 border border-primary-600 dark:border-primary-500 text-primary-600 dark:text-primary-400 rounded-md hover:bg-primary-50 dark:hover:bg-primary-900/30"
                             >
-                                Delete
-                            </button>
+                                Batch Create
+                            </RouterLink>
+                            <!-- Admin Actions -->
+                            <template v-if="canManage">
+                                <div class="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+                                <button
+                                    @click="showEditModal = true"
+                                    class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                                >
+                                    Edit
+                                </button>
+                                <button
+                                    @click="deleteBrand"
+                                    class="px-4 py-2 border border-red-300 dark:border-red-800 rounded-md text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30"
+                                >
+                                    Delete
+                                </button>
+                            </template>
                         </div>
                     </div>
 

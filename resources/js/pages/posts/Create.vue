@@ -1,20 +1,26 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
+import { useRouter, useRoute, RouterLink } from 'vue-router';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { postApi, brandApi, mediaApi } from '@/services/api';
 
 const router = useRouter();
 const route = useRoute();
 
-const brands = ref([]);
+const brand = ref(null);
 const brandMedia = ref([]);
 const loading = ref(false);
+const loadingBrand = ref(true);
 const loadingMedia = ref(false);
 const error = ref('');
 
+// Get brand_id from URL - required
+const brandId = computed(() => {
+    return route.query.brand_id ? parseInt(route.query.brand_id) : null;
+});
+
 const form = ref({
-    brand_id: route.query.brand_id ? parseInt(route.query.brand_id) : '',
+    brand_id: brandId.value,
     title: '',
     caption: '',
     platforms: [],
@@ -32,9 +38,7 @@ const platforms = [
     { id: 'instagram_reel', name: 'Instagram Reel', icon: 'IG' },
 ];
 
-const selectedBrand = computed(() => {
-    return brands.value.find(b => b.id === parseInt(form.value.brand_id));
-});
+const selectedBrand = computed(() => brand.value);
 
 const canSubmit = computed(() => {
     return form.value.brand_id &&
@@ -59,49 +63,43 @@ watch(() => form.value.platforms, (newPlatforms) => {
     }
 }, { deep: true });
 
-// Remember last selected brand
-watch(() => form.value.brand_id, (newBrandId) => {
-    if (newBrandId) {
-        localStorage.setItem('last_selected_brand_id', newBrandId.toString());
+const fetchBrand = async () => {
+    if (!brandId.value) {
+        // No brand specified - redirect to brands page
+        router.push('/brands');
+        return;
     }
-});
 
-const fetchBrands = async () => {
     try {
-        const response = await brandApi.list();
-        brands.value = response.data.brands || response.data.data || response.data;
+        loadingBrand.value = true;
+        const response = await brandApi.get(brandId.value);
+        brand.value = response.data.brand || response.data.data || response.data;
+        form.value.brand_id = brand.value.id;
 
-        // Auto-select brand (priority: query param > last used > only one available)
-        if (!form.value.brand_id) {
-            if (route.query.brand_id) {
-                form.value.brand_id = parseInt(route.query.brand_id);
-            } else if (brands.value.length === 1) {
-                form.value.brand_id = brands.value[0].id;
-            } else {
-                const lastBrandId = localStorage.getItem('last_selected_brand_id');
-                if (lastBrandId && brands.value.some(b => b.id === parseInt(lastBrandId))) {
-                    form.value.brand_id = parseInt(lastBrandId);
-                }
-            }
-        }
+        // Remember this brand for convenience
+        localStorage.setItem('last_selected_brand_id', brand.value.id.toString());
 
-        if (form.value.brand_id) {
-            fetchBrandMedia();
-        }
+        // Fetch media for this brand
+        fetchBrandMedia();
     } catch (err) {
-        console.error('Failed to fetch brands:', err);
+        console.error('Failed to fetch brand:', err);
+        error.value = 'Brand not found or you do not have access';
+        // Redirect to brands page after a short delay
+        setTimeout(() => router.push('/brands'), 2000);
+    } finally {
+        loadingBrand.value = false;
     }
 };
 
 const fetchBrandMedia = async () => {
-    if (!form.value.brand_id) {
+    if (!brandId.value) {
         brandMedia.value = [];
         return;
     }
 
     try {
         loadingMedia.value = true;
-        const response = await mediaApi.list({ brand_id: form.value.brand_id });
+        const response = await mediaApi.list({ brand_id: brandId.value });
         brandMedia.value = response.data.data || response.data || [];
     } catch (err) {
         console.error('Failed to fetch media:', err);
@@ -172,10 +170,7 @@ const submitForApproval = async () => {
 };
 
 onMounted(() => {
-    fetchBrands();
-    if (form.value.brand_id) {
-        fetchBrandMedia();
-    }
+    fetchBrand();
 });
 </script>
 
@@ -183,13 +178,37 @@ onMounted(() => {
     <AppLayout>
         <div class="py-6">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex items-center gap-4">
-                    <button @click="router.back()" class="text-gray-400 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-300">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                        </svg>
-                    </button>
-                    <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Create Post</h1>
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <RouterLink :to="`/brands/${brandId}`" class="text-gray-400 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-300">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                            </svg>
+                        </RouterLink>
+                        <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Create Post</h1>
+                    </div>
+                    <!-- Brand Context -->
+                    <RouterLink
+                        v-if="brand"
+                        :to="`/brands/${brand.id}`"
+                        class="flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                    >
+                        <div
+                            v-if="brand.logo_url"
+                            class="w-6 h-6 rounded-full overflow-hidden"
+                        >
+                            <img :src="brand.logo_url" :alt="brand.name" class="w-full h-full object-cover" />
+                        </div>
+                        <div
+                            v-else
+                            class="w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center"
+                        >
+                            <span class="text-primary-600 dark:text-primary-400 text-xs font-semibold">
+                                {{ brand.name?.charAt(0)?.toUpperCase() }}
+                            </span>
+                        </div>
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ brand.name }}</span>
+                    </RouterLink>
                 </div>
             </div>
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
@@ -197,27 +216,18 @@ onMounted(() => {
                     {{ error }}
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Loading state -->
+                <div v-if="loadingBrand" class="text-center py-12">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
+                    <p class="mt-2 text-gray-500 dark:text-gray-400">Loading brand...</p>
+                </div>
+
+                <div v-else-if="brand" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <!-- Form -->
                     <div class="space-y-6">
                         <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
                             <h2 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Post Details</h2>
                             <div class="space-y-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-400">Brand *</label>
-                                    <select
-                                        v-model="form.brand_id"
-                                        @change="fetchBrandMedia(); selectedMedia = []"
-                                        required
-                                        class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                                    >
-                                        <option value="">Select a brand</option>
-                                        <option v-for="brand in brands" :key="brand.id" :value="brand.id">
-                                            {{ brand.name }}
-                                        </option>
-                                    </select>
-                                </div>
-
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-400">Title (internal) *</label>
                                     <input
@@ -279,7 +289,6 @@ onMounted(() => {
                             <div class="flex justify-between items-center mb-4">
                                 <h2 class="text-lg font-medium text-gray-900 dark:text-white">Media</h2>
                                 <button
-                                    v-if="form.brand_id"
                                     @click="showMediaLibrary = true"
                                     class="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300"
                                 >
@@ -287,11 +296,7 @@ onMounted(() => {
                                 </button>
                             </div>
 
-                            <div v-if="!form.brand_id" class="text-center text-gray-500 dark:text-gray-400 py-8">
-                                Select a brand first to add media
-                            </div>
-
-                            <div v-else-if="selectedMedia.length === 0" class="text-center text-gray-500 dark:text-gray-400 py-8">
+                            <div v-if="selectedMedia.length === 0" class="text-center text-gray-500 dark:text-gray-400 py-8">
                                 <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                 </svg>

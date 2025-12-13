@@ -130,3 +130,16 @@ export const commentApi = {
     delete: (id) => api.delete(`/comments/${id}`),
     resolve: (id) => api.post(`/comments/${id}/resolve`),
 };
+
+// Collection API
+export const collectionApi = {
+    list: (params) => api.get('/collections', { params }),
+    get: (id) => api.get(`/collections/${id}`),
+    create: (data) => api.post('/collections', data),
+    update: (id, data) => api.put(`/collections/${id}`, data),
+    delete: (id) => api.delete(`/collections/${id}`),
+    generateApprovalLink: (id, expiresInDays) => api.post(`/collections/${id}/generate-link`, { expires_in_days: expiresInDays }),
+    submitForApproval: (id) => api.post(`/collections/${id}/submit`),
+    addPosts: (id, postIds) => api.post(`/collections/${id}/posts`, { post_ids: postIds }),
+    removePosts: (id, postIds) => api.delete(`/collections/${id}/posts`, { data: { post_ids: postIds } }),
+};

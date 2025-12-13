@@ -4,10 +4,12 @@ use App\Http\Controllers\Api\AgencyController;
 use App\Http\Controllers\Api\ApprovalController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BrandController;
+use App\Http\Controllers\Api\CollectionController;
 use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\MediaController;
 use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\PublicApprovalController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -20,6 +22,10 @@ use Illuminate\Support\Facades\Route;
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/invitation/{token}/accept', [AuthController::class, 'acceptInvitation']);
+
+// Public approval routes (no auth required)
+Route::get('/public/approval/{token}', [PublicApprovalController::class, 'show']);
+Route::post('/public/approval/{token}/submit', [PublicApprovalController::class, 'submit']);
 
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
@@ -57,6 +63,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/posts/{post}/media', [PostController::class, 'attachMedia']);
     Route::delete('/posts/{post}/media/{media}', [PostController::class, 'detachMedia']);
     Route::put('/posts/{post}/media/reorder', [PostController::class, 'reorderMedia']);
+
+    // Collections
+    Route::apiResource('collections', CollectionController::class);
+    Route::post('/collections/{collection}/generate-link', [CollectionController::class, 'generateApprovalLink']);
+    Route::post('/collections/{collection}/submit', [CollectionController::class, 'submitForApproval']);
+    Route::post('/collections/{collection}/posts', [CollectionController::class, 'addPosts']);
+    Route::delete('/collections/{collection}/posts', [CollectionController::class, 'removePosts']);
 
     // Approvals
     Route::get('/approvals', [ApprovalController::class, 'index']);
