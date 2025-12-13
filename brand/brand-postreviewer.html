@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Brand Guidelines | Post Reviewer</title>
+  <meta name="description" content="Official visual identity guidelines for Post Reviewer - colors, typography, logo usage, and components.">
+  <meta property="og:title" content="Post Reviewer Brand Guidelines">
+  <meta property="og:description" content="Official visual identity guidelines for Post Reviewer">
+  <meta property="og:type" content="website">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 32 32' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='2' y='2' width='28' height='28' rx='5' stroke='%2310B981' stroke-width='2' fill='none'/%3E%3Crect x='5' y='5' width='22' height='22' rx='3' fill='%23D1FAE5'/%3E%3Cpath d='M10 17L14 21L22 12' stroke='%2310B981' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    
+    /* Smooth scrolling */
+    html { scroll-behavior: smooth; }
+    
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #F1F5F9; }
+    ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+    
+    /* Selection */
+    ::selection { background: #D1FAE5; color: #059669; }
+    
+    /* Transitions */
+    button { transition: all 0.2s ease; }
+    button:hover { transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+    
+    /* Code blocks */
+    .code-block {
+      background: #1E293B;
+      border-radius: 12px;
+      padding: 20px;
+      overflow-x: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: #E2E8F0;
+      line-height: 1.6;
+    }
+    .code-block .comment { color: #64748B; }
+    .code-block .property { color: #10B981; }
+    .code-block .value { color: #F59E0B; }
+    .code-block .string { color: #38BDF8; }
+    
+    /* Copy button */
+    .copy-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: rgba(255,255,255,0.1);
+      border: none;
+      color: #94A3B8;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+    }
+    .copy-btn:hover { background: rgba(255,255,255,0.2); color: #fff; }
+    
+    /* Download buttons */
+    .download-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+    }
+    .download-btn {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      cursor: pointer;
+      text-decoration: none;
+      color: #1E293B;
+    }
+    .download-btn:hover { border-color: #10B981; background: #F0FDF4; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // Brand Colors
+    const colors = {
+      primary: '#10B981',
+      primaryDark: '#059669',
+      primaryLight: '#D1FAE5',
+      secondary: '#1E293B',
+      secondaryLight: '#334155',
+      accent: '#F59E0B',
+      accentLight: '#FEF3C7',
+      neutral: {
+        50: '#F8FAFC',
+        100: '#F1F5F9',
+        200: '#E2E8F0',
+        300: '#CBD5E1',
+        400: '#94A3B8',
+        500: '#64748B',
+        600: '#475569',
+        700: '#334155',
+        800: '#1E293B',
+        900: '#0F172A',
+      },
+      white: '#FFFFFF',
+      success: '#10B981',
+      warning: '#F59E0B',
+      error: '#EF4444',
+      info: '#3B82F6',
+    };
+
+    // Typography
+    const fonts = {
+      logo: '"Plus Jakarta Sans", system-ui, sans-serif',
+      heading: '"Plus Jakarta Sans", system-ui, sans-serif',
+      body: '"Inter", system-ui, sans-serif',
+      mono: '"JetBrains Mono", monospace',
+    };
+
+    // Logo Component
+    const Logo = ({ variant = 'full', size = 'md', darkMode = false }) => {
+      const sizes = {
+        xs: { icon: 18, text: 10, gap: 6 },
+        sm: { icon: 28, text: 14, gap: 8 },
+        md: { icon: 40, text: 18, gap: 12 },
+        lg: { icon: 56, text: 24, gap: 14 },
+        xl: { icon: 72, text: 32, gap: 18 },
+        xxl: { icon: 96, text: 42, gap: 20 },
+      };
+      
+      const s = sizes[size];
+      const fg = darkMode ? colors.white : colors.secondary;
+      const accent = colors.primary;
+      
+      const IconMark = () => (
+        <svg width={s.icon} height={s.icon} viewBox="0 0 80 80" fill="none">
+          <rect x="6" y="6" width="68" height="68" rx="12" stroke={accent} strokeWidth="4" fill="none"/>
+          <rect x="14" y="14" width="52" height="52" rx="8" fill={darkMode ? colors.secondary : colors.primaryLight}/>
+          <path d="M26 42L36 52L54 32" stroke={accent} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      );
+      
+      if (variant === 'icon') {
+        return <IconMark />;
+      }
+      
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: s.gap }}>
+          <IconMark />
+          <span style={{ 
+            fontFamily: fonts.logo, 
+            fontSize: s.text, 
+            fontWeight: 700, 
+            color: fg,
+            letterSpacing: '-0.04em'
+          }}>
+            Post Reviewer
+          </span>
+        </div>
+      );
+    };
+
+    // Copy to clipboard helper
+    const copyToClipboard = (text, setCopied) => {
+      navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    };
+
+    // Color Swatch Component
+    const ColorSwatch = ({ name, hex, usage, large = false, copyable = true }) => {
+      const [copied, setCopied] = useState(false);
+      
+      return (
+        <div 
+          onClick={() => copyable && copyToClipboard(hex, setCopied)}
+          style={{ 
+            display: 'flex', 
+            flexDirection: large ? 'column' : 'row',
+            alignItems: large ? 'stretch' : 'center',
+            gap: 12,
+            background: colors.white,
+            borderRadius: 12,
+            padding: large ? 0 : 12,
+            border: `1px solid ${colors.neutral[200]}`,
+            overflow: 'hidden',
+            cursor: copyable ? 'pointer' : 'default',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          <div style={{ 
+            width: large ? '100%' : 64, 
+            height: large ? 100 : 64, 
+            background: hex, 
+            borderRadius: large ? 0 : 8,
+            flexShrink: 0,
+            position: 'relative'
+          }}>
+            {copied && (
+              <div style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'rgba(0,0,0,0.7)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+                fontSize: 12,
+                fontWeight: 600
+              }}>
+                Copied!
+              </div>
+            )}
+          </div>
+          <div style={{ padding: large ? 16 : 0 }}>
+            <div style={{ fontFamily: fonts.heading, fontWeight: 600, color: colors.secondary, fontSize: 14 }}>
+              {name}
+            </div>
+            <div style={{ fontFamily: fonts.mono, fontSize: 12, color: colors.neutral[500], marginTop: 2 }}>
+              {hex}
+            </div>
+            {usage && (
+              <div style={{ fontSize: 12, color: colors.neutral[500], marginTop: 4 }}>
+                {usage}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    // Section Component
+    const Section = ({ title, children, dark = false, id }) => (
+      <section id={id} style={{ 
+        background: dark ? colors.secondary : colors.white, 
+        borderRadius: 24, 
+        padding: 40,
+        marginBottom: 32
+      }}>
+        <h2 style={{ 
+          fontFamily: fonts.heading, 
+          fontSize: 28, 
+          fontWeight: 700, 
+          color: dark ? colors.white : colors.secondary,
+          marginBottom: 24,
+          letterSpacing: '-0.02em'
+        }}>
+          {title}
+        </h2>
+        {children}
+      </section>
+    );
+
+    // Typography Sample
+    const TypeSample = ({ tag, name, size, weight, sample }) => (
+      <div style={{ marginBottom: 24, paddingBottom: 24, borderBottom: `1px solid ${colors.neutral[100]}` }}>
+        <div style={{ display: 'flex', gap: 16, marginBottom: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
+          <span style={{ 
+            fontFamily: fonts.mono, 
+            fontSize: 11, 
+            color: colors.primary, 
+            background: colors.primaryLight,
+            padding: '2px 8px',
+            borderRadius: 4
+          }}>
+            {tag}
+          </span>
+          <span style={{ fontFamily: fonts.mono, fontSize: 12, color: colors.neutral[400] }}>
+            {name} · {size} · {weight}
+          </span>
+        </div>
+        <div style={{ 
+          fontFamily: name.includes('Jakarta') ? fonts.heading : fonts.body, 
+          fontSize: parseInt(size), 
+          fontWeight: weight === 'Bold' ? 700 : weight === 'Semibold' ? 600 : weight === 'Medium' ? 500 : 400,
+          color: colors.secondary,
+          letterSpacing: parseInt(size) > 24 ? '-0.03em' : '-0.01em'
+        }}>
+          {sample}
+        </div>
+      </div>
+    );
+
+    // Button Component
+    const Button = ({ variant = 'primary', size = 'md', children }) => {
+      const styles = {
+        primary: { 
+          background: colors.primary, 
+          color: colors.white,
+          border: 'none'
+        },
+        secondary: { 
+          background: colors.white, 
+          color: colors.secondary,
+          border: `2px solid ${colors.neutral[200]}`
+        },
+        ghost: { 
+          background: 'transparent', 
+          color: colors.secondary,
+          border: 'none'
+        },
+      };
+      
+      const sizesMap = {
+        sm: { padding: '8px 16px', fontSize: 13 },
+        md: { padding: '12px 24px', fontSize: 14 },
+        lg: { padding: '16px 32px', fontSize: 16 },
+      };
+      
+      return (
+        <button style={{
+          ...styles[variant],
+          ...sizesMap[size],
+          fontFamily: fonts.body,
+          fontWeight: 600,
+          borderRadius: 10,
+          cursor: 'pointer',
+        }}>
+          {children}
+        </button>
+      );
+    };
+
+    // Code Block with Copy
+    const CodeBlock = ({ code, language = 'css' }) => {
+      const [copied, setCopied] = useState(false);
+      
+      return (
+        <div style={{ position: 'relative' }}>
+          <button 
+            className="copy-btn"
+            onClick={() => copyToClipboard(code, setCopied)}
+          >
+            {copied ? '✓ Copied' : 'Copy'}
+          </button>
+          <pre className="code-block">
+            <code>{code}</code>
+          </pre>
+        </div>
+      );
+    };
+
+    // SVG Download Data URLs
+    const svgIcons = {
+      iconLight: `<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="6" width="68" height="68" rx="12" stroke="#10B981" stroke-width="4" fill="none"/><rect x="14" y="14" width="52" height="52" rx="8" fill="#D1FAE5"/><path d="M26 42L36 52L54 32" stroke="#10B981" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+      iconDark: `<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="6" width="68" height="68" rx="12" stroke="#10B981" stroke-width="4" fill="none"/><rect x="14" y="14" width="52" height="52" rx="8" fill="#1E293B"/><path d="M26 42L36 52L54 32" stroke="#10B981" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+      logoLight: `<svg width="280" height="80" viewBox="0 0 280 80" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="6" width="68" height="68" rx="12" stroke="#10B981" stroke-width="4" fill="none"/><rect x="14" y="14" width="52" height="52" rx="8" fill="#D1FAE5"/><path d="M26 42L36 52L54 32" stroke="#10B981" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><text x="96" y="50" font-family="Plus Jakarta Sans, system-ui, sans-serif" font-size="28" font-weight="700" fill="#1E293B" letter-spacing="-1">Post Reviewer</text></svg>`,
+      logoDark: `<svg width="280" height="80" viewBox="0 0 280 80" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="6" width="68" height="68" rx="12" stroke="#10B981" stroke-width="4" fill="none"/><rect x="14" y="14" width="52" height="52" rx="8" fill="#1E293B"/><path d="M26 42L36 52L54 32" stroke="#10B981" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><text x="96" y="50" font-family="Plus Jakarta Sans, system-ui, sans-serif" font-size="28" font-weight="700" fill="#FFFFFF" letter-spacing="-1">Post Reviewer</text></svg>`,
+    };
+
+    const downloadSVG = (svgContent, filename) => {
+      const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    // Main Brand Guide
+    function PostReviewerBrandGuide() {
+      const [activeTab, setActiveTab] = useState('overview');
+      const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+      
+      const tabs = [
+        { id: 'overview', label: 'Overview' },
+        { id: 'logo', label: 'Logo' },
+        { id: 'colors', label: 'Colors' },
+        { id: 'typography', label: 'Typography' },
+        { id: 'components', label: 'Components' },
+        { id: 'downloads', label: 'Downloads' },
+      ];
+
+      return (
+        <div style={{ 
+          minHeight: '100vh', 
+          background: colors.neutral[50],
+          fontFamily: fonts.body
+        }}>
+          {/* Header */}
+          <header style={{ 
+            background: colors.white, 
+            borderBottom: `1px solid ${colors.neutral[200]}`,
+            padding: '20px 40px',
+            position: 'sticky',
+            top: 0,
+            zIndex: 100
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: 1200, margin: '0 auto' }}>
+              <Logo size="sm" />
+              <div style={{ 
+                fontFamily: fonts.mono, 
+                fontSize: 12, 
+                color: colors.neutral[400],
+                background: colors.neutral[100],
+                padding: '6px 12px',
+                borderRadius: 6
+              }}>
+                Visual Identity Guide v1.0
+              </div>
+            </div>
+          </header>
+
+          {/* Navigation */}
+          <nav style={{ 
+            background: colors.white, 
+            borderBottom: `1px solid ${colors.neutral[200]}`,
+            padding: '0 40px',
+            position: 'sticky',
+            top: 73,
+            zIndex: 99,
+            overflowX: 'auto'
+          }}>
+            <div style={{ display: 'flex', gap: 8, maxWidth: 1200, margin: '0 auto' }}>
+              {tabs.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  style={{
+                    padding: '16px 20px',
+                    background: 'transparent',
+                    border: 'none',
+                    borderBottom: activeTab === tab.id ? `3px solid ${colors.primary}` : '3px solid transparent',
+                    fontFamily: fonts.body,
+                    fontSize: 14,
+                    fontWeight: activeTab === tab.id ? 600 : 400,
+                    color: activeTab === tab.id ? colors.primary : colors.neutral[500],
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </nav>
+
+          {/* Content */}
+          <main style={{ padding: '40px 20px', maxWidth: 1200, margin: '0 auto' }}>
+            
+            {/* OVERVIEW TAB */}
+            {activeTab === 'overview' && (
+              <>
+                <Section title="Brand Overview">
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 40 }}>
+                    <div>
+                      <h3 style={{ fontFamily: fonts.heading, fontSize: 18, fontWeight: 600, color: colors.secondary, marginBottom: 12 }}>
+                        Mission
+                      </h3>
+                      <p style={{ color: colors.neutral[600], lineHeight: 1.7, marginBottom: 24 }}>
+                        Make client approvals effortless. Post Reviewer helps agencies and freelancers 
+                        get faster sign-offs with realistic mockups and streamlined feedback.
+                      </p>
+                      
+                      <h3 style={{ fontFamily: fonts.heading, fontSize: 18, fontWeight: 600, color: colors.secondary, marginBottom: 12 }}>
+                        Brand Personality
+                      </h3>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        {['Professional', 'Efficient', 'Approachable', 'Clear', 'Trustworthy'].map(trait => (
+                          <span key={trait} style={{
+                            background: colors.primaryLight,
+                            color: colors.primaryDark,
+                            padding: '6px 14px',
+                            borderRadius: 20,
+                            fontSize: 13,
+                            fontWeight: 500
+                          }}>
+                            {trait}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div style={{ 
+                      background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.primaryDark} 100%)`,
+                      borderRadius: 16,
+                      padding: 32,
+                      color: colors.white
+                    }}>
+                      <div style={{ fontSize: 14, opacity: 0.8, marginBottom: 8 }}>Tagline</div>
+                      <div style={{ fontFamily: fonts.heading, fontSize: 28, fontWeight: 700, lineHeight: 1.3, letterSpacing: '-0.02em' }}>
+                        Client approvals,<br/>made simple.
+                      </div>
+                    </div>
+                  </div>
+                </Section>
+
+                <Section title="Target Audience">
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 20 }}>
+                    {[
+                      { title: 'Marketing Agencies', desc: 'Teams managing multiple client accounts who need streamlined approval workflows' },
+                      { title: 'Freelance Creators', desc: 'Social media managers and content creators seeking professional client interactions' },
+                      { title: 'In-House Teams', desc: 'Brand teams coordinating with external stakeholders on content approval' },
+                    ].map(audience => (
+                      <div key={audience.title} style={{
+                        background: colors.neutral[50],
+                        borderRadius: 12,
+                        padding: 24,
+                        border: `1px solid ${colors.neutral[200]}`
+                      }}>
+                        <h4 style={{ fontFamily: fonts.heading, fontWeight: 600, color: colors.secondary, marginBottom: 8 }}>
+                          {audience.title}
+                        </h4>
+                        <p style={{ fontSize: 14, color: colors.neutral[500], lineHeight: 1.6 }}>
+                          {audience.desc}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </Section>
+
+                <Section title="Brand At a Glance" dark>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 24 }}>
+                    <div>
+                      <h4 style={{ color: colors.neutral[400], fontSize: 11, marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                        Logo Font
+                      </h4>
+                      <div style={{ color: colors.white, fontSize: 16, fontFamily: fonts.heading, fontWeight: 700 }}>Plus Jakarta Sans</div>
+                    </div>
+                    <div>
+                      <h4 style={{ color: colors.neutral[400], fontSize: 11, marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                        Primary Color
+                      </h4>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ width: 24, height: 24, borderRadius: 6, background: colors.primary }} />
+                        <span style={{ color: colors.white, fontFamily: fonts.mono, fontSize: 14 }}>#10B981</span>
+                      </div>
+                    </div>
+                    <div>
+                      <h4 style={{ color: colors.neutral[400], fontSize: 11, marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                        Body Font
+                      </h4>
+                      <div style={{ color: colors.white, fontSize: 16 }}>Inter</div>
+                    </div>
+                    <div>
+                      <h4 style={{ color: colors.neutral[400], fontSize: 11, marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                        Border Radius
+                      </h4>
+                      <div style={{ color: colors.white, fontFamily: fonts.mono, fontSize: 16 }}>8–16px</div>
+                    </div>
+                  </div>
+                </Section>
+              </>
+            )}
+
+            {/* LOGO TAB */}
+            {activeTab === 'logo' && (
+              <>
+                <Section title="Primary Logo">
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24 }}>
+                    <div style={{ 
+                      background: colors.neutral[50], 
+                      borderRadius: 16, 
+                      padding: 48,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: `1px solid ${colors.neutral[200]}`
+                    }}>
+                      <Logo size="xl" />
+                    </div>
+                    <div style={{ 
+                      background: colors.secondary, 
+                      borderRadius: 16, 
+                      padding: 48,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <Logo size="xl" darkMode />
+                    </div>
+                  </div>
+                  <p style={{ color: colors.neutral[500], marginTop: 16, fontSize: 14 }}>
+                    The primary logo uses <strong>Plus Jakarta Sans Bold</strong> with tight letter-spacing (-0.04em) 
+                    for a clean, modern appearance.
+                  </p>
+                </Section>
+
+                <Section title="Logo Anatomy">
+                  <div style={{ 
+                    background: colors.neutral[50], 
+                    borderRadius: 16, 
+                    padding: 40,
+                    border: `1px solid ${colors.neutral[200]}`
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 40, justifyContent: 'center', flexWrap: 'wrap' }}>
+                      <div style={{ textAlign: 'center' }}>
+                        <Logo variant="icon" size="xl" />
+                        <div style={{ marginTop: 16, fontSize: 13, color: colors.neutral[500] }}>
+                          <strong style={{ color: colors.secondary }}>Icon Mark</strong><br/>
+                          Checkbox in frame — represents approval
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 32, color: colors.neutral[300] }}>+</div>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ 
+                          fontFamily: fonts.logo, 
+                          fontSize: 32, 
+                          fontWeight: 700, 
+                          color: colors.secondary,
+                          letterSpacing: '-0.04em'
+                        }}>
+                          Post Reviewer
+                        </div>
+                        <div style={{ marginTop: 16, fontSize: 13, color: colors.neutral[500] }}>
+                          <strong style={{ color: colors.secondary }}>Wordmark</strong><br/>
+                          Plus Jakarta Sans Bold, -0.04em tracking
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Section>
+
+                <Section title="Logo Sizes">
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20 }}>
+                    {[
+                      { size: 'xl', label: 'Hero / Marketing', context: 'Landing pages, presentations' },
+                      { size: 'lg', label: 'Large', context: 'Page headers, login screens' },
+                      { size: 'md', label: 'Medium', context: 'App header, navigation' },
+                      { size: 'sm', label: 'Small', context: 'Footer, email signatures' },
+                    ].map(item => (
+                      <div key={item.size} style={{
+                        background: colors.neutral[50],
+                        borderRadius: 12,
+                        padding: 24,
+                        border: `1px solid ${colors.neutral[200]}`
+                      }}>
+                        <div style={{ marginBottom: 16, minHeight: 60, display: 'flex', alignItems: 'center' }}>
+                          <Logo size={item.size} />
+                        </div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: colors.secondary }}>{item.label}</div>
+                        <div style={{ fontSize: 12, color: colors.neutral[400] }}>{item.context}</div>
+                      </div>
+                    ))}
+                  </div>
+                </Section>
+
+                <Section title="Icon Only Variations">
+                  <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                    {['xxl', 'xl', 'lg', 'md', 'sm', 'xs'].map(size => (
+                      <div key={size} style={{ textAlign: 'center' }}>
+                        <Logo variant="icon" size={size} />
+                        <div style={{ fontFamily: fonts.mono, fontSize: 10, color: colors.neutral[400], marginTop: 8 }}>
+                          {size}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p style={{ color: colors.neutral[500], marginTop: 20, fontSize: 14 }}>
+                    Use the icon-only variant for favicons, app icons, avatars, and tight spaces where the full logo won't fit.
+                  </p>
+                </Section>
+
+                <Section title="Clear Space & Minimum Size">
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 40 }}>
+                    <div>
+                      <h4 style={{ fontFamily: fonts.heading, fontWeight: 600, color: colors.secondary, marginBottom: 12 }}>
+                        Clear Space
+                      </h4>
+                      <p style={{ color: colors.neutral[600], fontSize: 14, lineHeight: 1.7, marginBottom: 20 }}>
+                        Maintain clear space equal to the width of the checkmark stroke around all sides.
+                      </p>
+                      <div style={{
+                        background: colors.neutral[50],
+                        borderRadius: 12,
+                        padding: 48,
+                        border: `2px dashed ${colors.primary}`,
+                        display: 'flex',
+                        justifyContent: 'center',
+                        position: 'relative'
+                      }}>
+                        <Logo size="lg" />
+                        <div style={{ 
+                          position: 'absolute', 
+                          top: 8, 
+                          left: 8, 
+                          fontSize: 10, 
+                          color: colors.primary,
+                          fontFamily: fonts.mono
+                        }}>
+                          Clear zone
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <h4 style={{ fontFamily: fonts.heading, fontWeight: 600, color: colors.secondary, marginBottom: 12 }}>
+                        Minimum Sizes
+                      </h4>
+                      <p style={{ color: colors.neutral[600], fontSize: 14, lineHeight: 1.7, marginBottom: 20 }}>
+                        Full logo: 120px wide minimum. Icon only: 24px minimum.
+                      </p>
+                      <div style={{
+                        background: colors.neutral[50],
+                        borderRadius: 12,
+                        padding: 24,
+                        border: `1px solid ${colors.neutral[200]}`
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 24 }}>
+                          <div style={{ textAlign: 'center' }}>
+                            <Logo variant="icon" size="sm" />
+                            <div style={{ fontFamily: fonts.mono, fontSize: 10, color: colors.neutral[400], marginTop: 8 }}>
+                              24px min
+                            </div>
+                          </div>
+                          <div style={{ textAlign: 'center' }}>
+                            <Logo size="xs" />
+                            <div style={{ fontFamily: fonts.mono, fontSize: 10, color: colors.neutral[400], marginTop: 8 }}>
+                              120px min
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Section>
+              </>
+            )}
+
+            {/* COLORS TAB */}
+            {activeTab === 'colors' && (
+              <>
+                <Section title="Primary Colors">
+                  <p style={{ color: colors.neutral[500], marginBottom: 20, fontSize: 14 }}>
+                    Click any swatch to copy the hex code.
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20 }}>
+                    <ColorSwatch 
+                      name="Approval Green" 
+                      hex="#10B981" 
+                      usage="Primary brand color, CTAs, success states"
+                      large
+                    />
+                    <ColorSwatch 
+                      name="Slate" 
+                      hex="#1E293B" 
+                      usage="Headlines, body text, dark backgrounds"
+                      large
+                    />
+                    <ColorSwatch 
+                      name="Amber" 
+                      hex="#F59E0B" 
+                      usage="Accent, pending states, highlights"
+                      large
+                    />
+                  </div>
+                </Section>
+
+                <Section title="Extended Palette">
+                  <h4 style={{ fontFamily: fonts.heading, fontWeight: 600, color: colors.secondary, marginBottom: 16 }}>
+                    Green Tints
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 32 }}>
+                    <ColorSwatch name="Green 100" hex="#D1FAE5" usage="Backgrounds" />
+                    <ColorSwatch name="Green 200" hex="#A7F3D0" usage="Hover states" />
+                    <ColorSwatch name="Green 500" hex="#10B981" usage="Primary" />
+                    <ColorSwatch name="Green 600" hex="#059669" usage="Pressed states" />
+                  </div>
+
+                  <h4 style={{ fontFamily: fonts.heading, fontWeight: 600, color: colors.secondary, marginBottom: 16 }}>
+                    Neutrals
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12 }}>
+                    <ColorSwatch name="50" hex="#F8FAFC" />
+                    <ColorSwatch name="100" hex="#F1F5F9" />
+                    <ColorSwatch name="200" hex="#E2E8F0" />
+                    <ColorSwatch name="400" hex="#94A3B8" />
+                    <ColorSwatch name="600" hex="#475569" />
+                    <ColorSwatch name="900" hex="#0F172A" />
+                  </div>
+                </Section>
+
+                <Section title="Semantic Colors">
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 20 }}>
+                    <ColorSwatch name="Success" hex="#10B981" usage="Approved, complete" />
+                    <ColorSwatch name="Warning" hex="#F59E0B" usage="Pending, attention" />
+                    <ColorSwatch name="Error" hex="#EF4444" usage="Rejected, errors" />
+                    <ColorSwatch name="Info" hex="#3B82F6" usage="Information" />
+                  </div>
+                </Section>
+
+                <Section title="CSS Variables">
+                  <CodeBlock code={`:root {
+  /* Primary */
+  --color-primary: #10B981;
+  --color-primary-dark: #059669;
+  --color-primary-light: #D1FAE5;
+  
+  /* Secondary */
+  --color-secondary: #1E293B;
+  
+  /* Accent */
+  --color-accent: #F59E0B;
+  --color-accent-light: #FEF3C7;
+  
+  /* Semantic */
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
+  --color-info: #3B82F6;
+  
+  /* Neutrals */
+  --color-neutral-50: #F8FAFC;
+  --color-neutral-100: #F1F5F9;
+  --color-neutral-200: #E2E8F0;
+  --color-neutral-400: #94A3B8;
+  --color-neutral-600: #475569;
+  --color-neutral-900: #0F172A;
+}`} />
+                </Section>
+              </>
+            )}
+
+            {/* TYPOGRAPHY TAB */}
+            {activeTab === 'typography' && (
+              <>
+                <Section title="Type System">
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 40, marginBottom: 32 }}>
+                    <div style={{
+                      background: colors.neutral[50],
+                      borderRadius: 12,
+                      padding: 24,
+                      border: `1px solid ${colors.neutral[200]}`
+                    }}>
+                      <div style={{ 
+                        fontFamily: fonts.heading, 
+                        fontSize: 36, 
+                        fontWeight: 700, 
+                        color: colors.secondary,
+                        marginBottom: 12,
+                        letterSpacing: '-0.03em'
+                      }}>
+                        Plus Jakarta Sans
+                      </div>
+                      <div style={{ fontFamily: fonts.mono, fontSize: 12, color: colors.neutral[400], marginBottom: 16 }}>
+                        Logo, Headings & Display
+                      </div>
+                      <p style={{ fontFamily: fonts.heading, color: colors.neutral[600], lineHeight: 1.6, fontSize: 14 }}>
+                        ABCDEFGHIJKLMNOPQRSTUVWXYZ<br/>
+                        abcdefghijklmnopqrstuvwxyz<br/>
+                        1234567890
+                      </p>
+                    </div>
+                    <div style={{
+                      background: colors.neutral[50],
+                      borderRadius: 12,
+                      padding: 24,
+                      border: `1px solid ${colors.neutral[200]}`
+                    }}>
+                      <div style={{ 
+                        fontFamily: fonts.body, 
+                        fontSize: 36, 
+                        fontWeight: 400, 
+                        color: colors.secondary,
+                        marginBottom: 12 
+                      }}>
+                        Inter
+                      </div>
+                      <div style={{ fontFamily: fonts.mono, fontSize: 12, color: colors.neutral[400], marginBottom: 16 }}>
+                        Body & UI
+                      </div>
+                      <p style={{ fontFamily: fonts.body, color: colors.neutral[600], lineHeight: 1.6, fontSize: 14 }}>
+                        ABCDEFGHIJKLMNOPQRSTUVWXYZ<br/>
+                        abcdefghijklmnopqrstuvwxyz<br/>
+                        1234567890
+                      </p>
+                    </div>
+                  </div>
+                </Section>
+
+                <Section title="Type Scale">
+                  <TypeSample tag="H1" name="Plus Jakarta Sans" size="48px" weight="Bold" sample="Client approvals, simplified" />
+                  <TypeSample tag="H2" name="Plus Jakarta Sans" size="36px" weight="Bold" sample="How it works" />
+                  <TypeSample tag="H3" name="Plus Jakarta Sans" size="24px" weight="Semibold" sample="Upload your content" />
+                  <TypeSample tag="H4" name="Plus Jakarta Sans" size="18px" weight="Semibold" sample="Feature heading" />
+                  <TypeSample tag="Body" name="Inter" size="16px" weight="Regular" sample="Post Reviewer streamlines the approval process for social media content, giving your clients a beautiful preview." />
+                  <TypeSample tag="Small" name="Inter" size="14px" weight="Regular" sample="Last updated 2 hours ago" />
+                  <TypeSample tag="Caption" name="Inter" size="12px" weight="Medium" sample="3 POSTS PENDING REVIEW" />
+                </Section>
+
+                <Section title="Font Loading">
+                  <CodeBlock code={`<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+/* CSS Font Stack */
+--font-heading: "Plus Jakarta Sans", system-ui, sans-serif;
+--font-body: "Inter", system-ui, sans-serif;
+--font-mono: "JetBrains Mono", monospace;`} />
+                </Section>
+              </>
+            )}
+
+            {/* COMPONENTS TAB */}
+            {activeTab === 'components' && (
+              <>
+                <Section title="Buttons">
+                  <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 32 }}>
+                    <Button variant="primary" size="lg">Primary Large</Button>
+                    <Button variant="primary" size="md">Primary Medium</Button>
+                    <Button variant="primary" size="sm">Primary Small</Button>
+                  </div>
+                  <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 32 }}>
+                    <Button variant="secondary" size="lg">Secondary Large</Button>
+                    <Button variant="secondary" size="md">Secondary Medium</Button>
+                    <Button variant="secondary" size="sm">Secondary Small</Button>
+                  </div>
+                  <CodeBlock code={`/* Primary Button */
+.btn-primary {
+  background: #10B981;
+  color: #FFFFFF;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-weight: 600;
+  border: none;
+}
+
+/* Secondary Button */
+.btn-secondary {
+  background: #FFFFFF;
+  color: #1E293B;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-weight: 600;
+  border: 2px solid #E2E8F0;
+}`} />
+                </Section>
+
+                <Section title="Status Badges">
+                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 24 }}>
+                    {[
+                      { label: 'Approved', bg: colors.primaryLight, color: colors.primaryDark },
+                      { label: 'Pending', bg: colors.accentLight, color: '#B45309' },
+                      { label: 'Changes Requested', bg: '#FEE2E2', color: '#DC2626' },
+                      { label: 'Draft', bg: colors.neutral[100], color: colors.neutral[600] },
+                    ].map(badge => (
+                      <span key={badge.label} style={{
+                        background: badge.bg,
+                        color: badge.color,
+                        padding: '6px 14px',
+                        borderRadius: 20,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        fontFamily: fonts.body
+                      }}>
+                        {badge.label}
+                      </span>
+                    ))}
+                  </div>
+                  <CodeBlock code={`/* Status Badges */
+.badge-approved {
+  background: #D1FAE5;
+  color: #059669;
+}
+.badge-pending {
+  background: #FEF3C7;
+  color: #B45309;
+}
+.badge-changes {
+  background: #FEE2E2;
+  color: #DC2626;
+}
+.badge-draft {
+  background: #F1F5F9;
+  color: #475569;
+}`} />
+                </Section>
+
+                <Section title="Cards">
+                  <div style={{
+                    background: colors.white,
+                    borderRadius: 16,
+                    border: `1px solid ${colors.neutral[200]}`,
+                    overflow: 'hidden',
+                    maxWidth: 360,
+                    marginBottom: 24
+                  }}>
+                    <div style={{ 
+                      background: `linear-gradient(135deg, ${colors.neutral[200]} 0%, ${colors.neutral[100]} 100%)`,
+                      height: 180,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: colors.neutral[400],
+                      fontSize: 14
+                    }}>
+                      [Post Preview]
+                    </div>
+                    <div style={{ padding: 20 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <span style={{ fontFamily: fonts.heading, fontWeight: 600, color: colors.secondary }}>
+                          Instagram Post
+                        </span>
+                        <span style={{
+                          background: colors.accentLight,
+                          color: '#B45309',
+                          padding: '4px 10px',
+                          borderRadius: 12,
+                          fontSize: 12,
+                          fontWeight: 600
+                        }}>
+                          Pending
+                        </span>
+                      </div>
+                      <p style={{ fontSize: 14, color: colors.neutral[500], marginBottom: 16 }}>
+                        Summer collection launch announcement...
+                      </p>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <Button variant="primary" size="sm">Approve</Button>
+                        <Button variant="secondary" size="sm">Request Changes</Button>
+                      </div>
+                    </div>
+                  </div>
+                  <CodeBlock code={`/* Card */
+.card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 16px;
+  overflow: hidden;
+}
+.card-body {
+  padding: 20px;
+}`} />
+                </Section>
+
+                <Section title="Border Radius">
+                  <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 24 }}>
+                    {[
+                      { name: 'Small', value: '8px', size: 60 },
+                      { name: 'Medium', value: '10px', size: 60 },
+                      { name: 'Large', value: '16px', size: 80 },
+                      { name: 'XL', value: '24px', size: 100 },
+                      { name: 'Full', value: '9999px', size: 60 },
+                    ].map(r => (
+                      <div key={r.name} style={{ textAlign: 'center' }}>
+                        <div style={{
+                          width: r.size,
+                          height: r.size,
+                          background: colors.primary,
+                          borderRadius: r.value,
+                          marginBottom: 8
+                        }} />
+                        <div style={{ fontSize: 12, fontWeight: 600, color: colors.secondary }}>{r.name}</div>
+                        <div style={{ fontSize: 11, fontFamily: fonts.mono, color: colors.neutral[400] }}>{r.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                </Section>
+              </>
+            )}
+
+            {/* DOWNLOADS TAB */}
+            {activeTab === 'downloads' && (
+              <>
+                <Section title="Logo Downloads">
+                  <p style={{ color: colors.neutral[500], marginBottom: 24, fontSize: 14 }}>
+                    Download logo files in SVG format. For PNG versions at specific sizes, contact the brand team.
+                  </p>
+                  <div className="download-grid">
+                    <button className="download-btn" onClick={() => downloadSVG(svgIcons.iconLight, 'post-reviewer-icon.svg')}>
+                      <Logo variant="icon" size="sm" />
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 14 }}>Icon (Light)</div>
+                        <div style={{ fontSize: 12, color: colors.neutral[500] }}>SVG</div>
+                      </div>
+                    </button>
+                    <button className="download-btn" onClick={() => downloadSVG(svgIcons.iconDark, 'post-reviewer-icon-dark.svg')}>
+                      <div style={{ background: colors.secondary, borderRadius: 8, padding: 4 }}>
+                        <Logo variant="icon" size="sm" darkMode />
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 14 }}>Icon (Dark)</div>
+                        <div style={{ fontSize: 12, color: colors.neutral[500] }}>SVG</div>
+                      </div>
+                    </button>
+                    <button className="download-btn" onClick={() => downloadSVG(svgIcons.logoLight, 'post-reviewer-logo.svg')}>
+                      <Logo variant="icon" size="sm" />
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 14 }}>Full Logo (Light)</div>
+                        <div style={{ fontSize: 12, color: colors.neutral[500] }}>SVG</div>
+                      </div>
+                    </button>
+                    <button className="download-btn" onClick={() => downloadSVG(svgIcons.logoDark, 'post-reviewer-logo-dark.svg')}>
+                      <div style={{ background: colors.secondary, borderRadius: 8, padding: 4 }}>
+                        <Logo variant="icon" size="sm" darkMode />
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 14 }}>Full Logo (Dark)</div>
+                        <div style={{ fontSize: 12, color: colors.neutral[500] }}>SVG</div>
+                      </div>
+                    </button>
+                  </div>
+                </Section>
+
+                <Section title="Tailwind Config">
+                  <p style={{ color: colors.neutral[500], marginBottom: 16, fontSize: 14 }}>
+                    Copy this into your tailwind.config.js to use Post Reviewer brand tokens.
+                  </p>
+                  <CodeBlock code={`// tailwind.config.js
+module.exports = {
+  theme: {
+    extend: {
+      colors: {
+        primary: {
+          DEFAULT: '#10B981',
+          dark: '#059669',
+          light: '#D1FAE5',
+        },
+        secondary: '#1E293B',
+        accent: {
+          DEFAULT: '#F59E0B',
+          light: '#FEF3C7',
+        },
+      },
+      fontFamily: {
+        logo: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+        heading: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+        body: ['Inter', 'system-ui', 'sans-serif'],
+      },
+      letterSpacing: {
+        logo: '-0.04em',
+      },
+      borderRadius: {
+        'card': '16px',
+        'button': '10px',
+      },
+    },
+  },
+}`} />
+                </Section>
+
+                <Section title="Quick Reference" dark>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 24 }}>
+                    <div>
+                      <h4 style={{ color: colors.neutral[400], fontSize: 11, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Primary
+                      </h4>
+                      <div style={{ color: colors.white, fontFamily: fonts.mono, fontSize: 14 }}>#10B981</div>
+                    </div>
+                    <div>
+                      <h4 style={{ color: colors.neutral[400], fontSize: 11, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Secondary
+                      </h4>
+                      <div style={{ color: colors.white, fontFamily: fonts.mono, fontSize: 14 }}>#1E293B</div>
+                    </div>
+                    <div>
+                      <h4 style={{ color: colors.neutral[400], fontSize: 11, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Accent
+                      </h4>
+                      <div style={{ color: colors.white, fontFamily: fonts.mono, fontSize: 14 }}>#F59E0B</div>
+                    </div>
+                    <div>
+                      <h4 style={{ color: colors.neutral[400], fontSize: 11, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Logo Font
+                      </h4>
+                      <div style={{ color: colors.white, fontSize: 14 }}>Plus Jakarta Sans</div>
+                    </div>
+                    <div>
+                      <h4 style={{ color: colors.neutral[400], fontSize: 11, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Body Font
+                      </h4>
+                      <div style={{ color: colors.white, fontSize: 14 }}>Inter</div>
+                    </div>
+                    <div>
+                      <h4 style={{ color: colors.neutral[400], fontSize: 11, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Logo Tracking
+                      </h4>
+                      <div style={{ color: colors.white, fontFamily: fonts.mono, fontSize: 14 }}>-0.04em</div>
+                    </div>
+                  </div>
+                </Section>
+              </>
+            )}
+
+          </main>
+
+          {/* Footer */}
+          <footer style={{ 
+            background: colors.white, 
+            borderTop: `1px solid ${colors.neutral[200]}`,
+            padding: '24px 40px',
+            textAlign: 'center'
+          }}>
+            <Logo size="xs" />
+            <p style={{ color: colors.neutral[400], fontSize: 13, marginTop: 12 }}>
+              Visual Identity Guide v1.0 • © {new Date().getFullYear()} Post Reviewer
+            </p>
+          </footer>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<PostReviewerBrandGuide />);
+  </script>
+</body>
+</html>
