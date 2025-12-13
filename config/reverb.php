@@ -77,10 +77,12 @@ return [
                 'secret' => env('REVERB_APP_SECRET'),
                 'app_id' => env('REVERB_APP_ID'),
                 'options' => [
-                    'host' => env('REVERB_HOST'),
-                    'port' => env('REVERB_PORT', 443),
-                    'scheme' => env('REVERB_SCHEME', 'https'),
-                    'useTLS' => env('REVERB_SCHEME', 'https') === 'https',
+                    // Use server-side host for internal broadcasting (Docker: reverb:8080)
+                    // Falls back to client-side host for local dev
+                    'host' => env('REVERB_SERVER_HOST', env('REVERB_HOST')),
+                    'port' => env('REVERB_SERVER_PORT', env('REVERB_PORT', 443)),
+                    'scheme' => env('REVERB_SERVER_SCHEME', env('REVERB_SCHEME', 'https')),
+                    'useTLS' => env('REVERB_SERVER_SCHEME', env('REVERB_SCHEME', 'https')) === 'https',
                 ],
                 'allowed_origins' => ['*'],
                 'ping_interval' => env('REVERB_APP_PING_INTERVAL', 60),

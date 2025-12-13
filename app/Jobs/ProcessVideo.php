@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Events\MediaProcessed;
 use App\Models\Media;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -27,6 +28,7 @@ class ProcessVideo implements ShouldQueue
         if (!file_exists($videoPath)) {
             Log::error("ProcessVideo: Video file not found", ['media_id' => $this->media->id, 'path' => $videoPath]);
             $this->media->update(['status' => 'failed']);
+            broadcast(new MediaProcessed('failed', $this->media->brand_id, $this->media->id));
             return;
         }
 
@@ -36,6 +38,7 @@ class ProcessVideo implements ShouldQueue
         if ($metadata === null) {
             Log::error("ProcessVideo: Failed to extract metadata", ['media_id' => $this->media->id]);
             $this->media->update(['status' => 'failed']);
+            broadcast(new MediaProcessed('failed', $this->media->brand_id, $this->media->id));
             return;
         }
 
@@ -50,6 +53,9 @@ class ProcessVideo implements ShouldQueue
             'thumbnails' => $thumbnails,
             'status' => 'ready',
         ]);
+
+        // Broadcast to frontend that processing is complete
+        broadcast(new MediaProcessed('ready', $this->media->brand_id, $this->media->id, $this->media->fresh()));
 
         Log::info("ProcessVideo: Video processed successfully", ['media_id' => $this->media->id]);
     }

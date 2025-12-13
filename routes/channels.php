@@ -20,12 +20,14 @@ Broadcast::channel('App.Models.User.{id}', function (User $user, int $id) {
 });
 
 // Agency-wide notifications
-Broadcast::channel('agency.{agencyId}', function (User $user, int $agencyId) {
+Broadcast::channel('agency.{agencyId}', function (?User $user, int $agencyId) {
+    if (!$user) return false;
     return $user->agency_id === $agencyId;
 });
 
 // Brand-specific notifications
-Broadcast::channel('brand.{brandId}', function (User $user, int $brandId) {
+Broadcast::channel('brand.{brandId}', function (?User $user, int $brandId) {
+    if (!$user) return false;
     return $user->hasBrandAccess(\App\Models\Brand::find($brandId));
 });
 
