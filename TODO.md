@@ -1,8 +1,6 @@
 # To Do
 
 ## In Progress
-- [ ] Users should be limited in some way to the file size they take on the server. We can't just give them unlimited disk space. Maybe it can be set per brand? This should be planned with how we charge customers. That needs different & deeper planning.
-- [ ] Improve home page to explain how the app works, who it's for, and compel them to try the app
 
 ## Paused
 - [ ] Make it easy to create multiple posts.
@@ -17,6 +15,11 @@
 
 
 ## For Testing
+- [ ] E2E tests with Playwright - Tests for Auth, Brand, Post, Approval workflows. Run: `npm run test:e2e` (all), `npm run test:e2e:headed` (visible browser), `npm run test:e2e:ui` (Playwright UI). Some tests may need selectors adjusted as UI changes.
+- [ ] Post creation UX improvements - Default platforms (FB + IG Feed), warnings moved below preview for visibility, JPEG export button
+- [ ] Home page redesign - Workflow-focused hero ("Upload. Preview. Get Approved."), "Sound Familiar?" pain points, "How It Works" 3-step guide, 6-card Features grid, "Who It's For" with benefit tags, final CTA. All copy tightened to single sentences. Discord moved to CTA footer.
+- [ ] Fix automated tests - Disabled rate limiting in tests, fixed blade @context escaping, fixed UserController parameter name mismatch (User $user vs $targetUser). All 82 tests pass. Run: `docker compose exec app php artisan test`
+- [ ] Agency storage quotas - Agencies have storage_quota (default 1GB) and storage_used fields. Uploads blocked when over quota. Brands page shows storage indicator. Admin panel allows editing quotas per agency. Run: `docker compose exec app php artisan migrate` then `docker compose exec app php artisan storage:sync`
 - [ ] Multi-user per brand - Already fully implemented: brand_user pivot table, hasBrandAccess() method, add/remove users via Brand detail page, posts/brands filtered by access. Managers see all agency brands, creators/reviewers see only assigned brands.
 - [ ] Sync BatchCreate.vue with Create.vue - Added facebook_reel platform and fixed preview condition for reels
 - [ ] SEO setup - Added robots.txt (blocks /api/ and /storage/), sitemap.xml, meta tags, Open Graph, Twitter Cards, and JSON-LD structured data. Submit sitemap to Google Search Console.
