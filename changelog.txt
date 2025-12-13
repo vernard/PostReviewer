@@ -1,0 +1,18 @@
+What's New - December 2025
+
+New Features
+- Facebook Reels support with realistic mockup preview
+- Email reviewers without requiring them to create an account
+- Download mockups as JPEG images
+- Stories and Reels now available in the homepage demo
+
+Improvements
+- Faster post creation with pre-selected platforms
+- Dynamic letterboxing adapts to your image colors
+- Updated Facebook Reel design to match current Facebook UI
+- Remembers your frequently-used reviewer emails
+
+Behind the Scenes
+- SEO improvements for better discoverability
+- Admin tools for managing users and agencies
+- Storage quotas per agency
