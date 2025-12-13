@@ -309,14 +309,15 @@ const exportAsJpeg = async () => {
         </div>
 
         <main class="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
+            <!-- Hero Section -->
             <div class="text-center">
                 <h1 class="text-4xl font-extrabold text-gray-900 dark:text-white sm:text-5xl md:text-6xl">
-                    Client Approvals,
-                    <span class="block text-primary-600 dark:text-primary-500">Made Simple</span>
+                    Upload. Preview.
+                    <span class="block text-primary-600 dark:text-primary-500">Get Approved.</span>
                 </h1>
                 <p class="mt-3 max-w-md mx-auto text-base text-gray-500 dark:text-gray-400 sm:text-lg md:mt-5 md:text-xl md:max-w-3xl">
-                    Make client approvals effortless. Post Reviewer helps agencies and freelancers
-                    get faster sign-offs with realistic mockups and streamlined feedback.
+                    Show clients exactly how their posts will look on Instagram and Facebook.
+                    Get sign-off in one click.
                 </p>
                 <div class="mt-10 flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
                     <RouterLink
@@ -329,16 +330,16 @@ const exportAsJpeg = async () => {
                         href="#demo"
                         class="bg-white dark:bg-gray-800 text-primary-600 dark:text-primary-500 px-6 sm:px-8 py-3 rounded-md text-base sm:text-lg font-medium border border-primary-600 dark:border-primary-500 hover:bg-primary-50 dark:hover:bg-gray-700 text-center"
                     >
-                        Try It Now
+                        See It In Action
                     </a>
                 </div>
             </div>
 
             <!-- Demo Section -->
-            <div id="demo" class="mt-16 sm:mt-24 bg-white dark:bg-gray-800 rounded-2xl shadow-xl dark:shadow-gray-900/50 p-4 sm:p-8">
+            <div id="demo" class="mt-16 bg-white dark:bg-gray-800 rounded-2xl shadow-xl dark:shadow-gray-900/50 p-4 sm:p-8">
                 <div class="text-center mb-8">
-                    <h2 class="text-3xl font-bold text-gray-900 dark:text-white">Try It Now</h2>
-                    <p class="mt-2 text-gray-600 dark:text-gray-400">Upload an image or video to see how it looks on social media</p>
+                    <h2 class="text-3xl font-bold text-gray-900 dark:text-white">Try It Now - No Account Needed</h2>
+                    <p class="mt-2 text-gray-600 dark:text-gray-400">Upload any image or video and see exactly how it'll look on Facebook or Instagram. It takes 5 seconds.</p>
                 </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -508,7 +509,7 @@ const exportAsJpeg = async () => {
                             <!-- Mockup Container - scales down on very small screens -->
                             <div ref="mockupRef" class="max-[400px]:scale-90">
                             <!-- Instagram Feed Mockup -->
-                            <div v-if="selectedPlatform === 'instagram_feed'" class="bg-white rounded-lg shadow-lg w-full max-w-[350px] sm:max-w-[375px]">
+                            <div v-if="selectedPlatform === 'instagram_feed'" class="bg-white rounded-lg shadow-lg w-[280px]">
                                 <!-- Header -->
                                 <div class="flex items-center gap-3 p-3 border-b">
                                     <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-500 p-0.5">
@@ -559,9 +560,6 @@ const exportAsJpeg = async () => {
                                             </div>
                                         </button>
                                         <!-- Duration badge -->
-                                        <div v-if="videoDuration" class="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded z-20">
-                                            {{ formatDuration(videoDuration) }}
-                                        </div>
                                     </template>
                                     <!-- Sample placeholder -->
                                     <div v-else class="w-full h-full bg-gradient-to-br from-pink-400 via-purple-400 to-indigo-400 flex items-center justify-center">
@@ -608,7 +606,7 @@ const exportAsJpeg = async () => {
                             </div>
 
                             <!-- Facebook Feed Mockup -->
-                            <div v-else-if="selectedPlatform === 'facebook_feed'" class="bg-white rounded-lg shadow-lg w-full max-w-[350px] sm:max-w-[500px]">
+                            <div v-else-if="selectedPlatform === 'facebook_feed'" class="bg-white rounded-lg shadow-lg w-[280px]">
                                 <!-- Header -->
                                 <div class="flex items-center gap-3 p-3">
                                     <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center overflow-hidden relative">
@@ -685,9 +683,6 @@ const exportAsJpeg = async () => {
                                             </div>
                                         </button>
                                         <!-- Duration badge -->
-                                        <div v-if="videoDuration" class="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded z-20">
-                                            {{ formatDuration(videoDuration) }}
-                                        </div>
                                     </template>
                                     <!-- Sample placeholder -->
                                     <div v-else class="w-full h-full bg-gradient-to-br from-blue-400 via-blue-500 to-indigo-500 flex items-center justify-center">
@@ -773,9 +768,6 @@ const exportAsJpeg = async () => {
                                         </div>
                                     </button>
                                     <!-- Duration badge -->
-                                    <div v-if="videoDuration" class="absolute top-14 right-3 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded z-20">
-                                        {{ formatDuration(videoDuration) }}
-                                    </div>
                                 </template>
                                 <div v-else class="absolute inset-0 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center">
                                     <div class="text-center text-white">
@@ -856,9 +848,6 @@ const exportAsJpeg = async () => {
                                         </div>
                                     </button>
                                     <!-- Duration badge -->
-                                    <div v-if="videoDuration" class="absolute top-14 right-3 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded z-20">
-                                        {{ formatDuration(videoDuration) }}
-                                    </div>
                                 </template>
                                 <div v-else class="absolute inset-0 bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 flex items-center justify-center">
                                     <div class="text-center text-white">
@@ -954,9 +943,6 @@ const exportAsJpeg = async () => {
                                         </div>
                                     </button>
                                     <!-- Duration badge -->
-                                    <div v-if="videoDuration" class="absolute top-14 right-3 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded z-20">
-                                        {{ formatDuration(videoDuration) }}
-                                    </div>
                                 </template>
                                 <div v-else class="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-500 flex items-center justify-center">
                                     <div class="text-center text-white">
@@ -966,54 +952,67 @@ const exportAsJpeg = async () => {
                                         <p class="mt-2 text-sm font-medium opacity-90">Your reel here</p>
                                     </div>
                                 </div>
-                                <!-- Bottom gradient overlay (reduced height) -->
-                                <div class="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/50 to-transparent pointer-events-none"></div>
+                                <!-- Bottom gradient overlay -->
+                                <div class="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/70 via-black/30 to-transparent pointer-events-none"></div>
                                 <!-- Right sidebar actions -->
-                                <div class="absolute right-2 bottom-16 flex flex-col items-center gap-4 drop-shadow-lg">
+                                <div class="absolute right-3 bottom-24 flex flex-col items-center gap-5 drop-shadow-lg">
+                                    <!-- Like -->
                                     <div class="flex flex-col items-center">
-                                        <svg class="w-6 h-6 text-white drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
-                                        </svg>
-                                        <span class="text-white text-xs mt-1 drop-shadow-md">1.2K</span>
+                                        <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                                            <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M2 20h2c.55 0 1-.45 1-1v-9c0-.55-.45-1-1-1H2v11zm19.83-7.12c.11-.25.17-.52.17-.8V11c0-1.1-.9-2-2-2h-5.5l.92-4.65c.05-.22.02-.46-.08-.66-.23-.45-.52-.86-.88-1.22L14 2 7.59 8.41C7.21 8.79 7 9.3 7 9.83v7.84C7 18.95 8.05 20 9.34 20h8.11c.7 0 1.36-.37 1.72-.97l2.66-6.15z"/>
+                                            </svg>
+                                        </div>
+                                        <span class="text-white text-xs mt-1 font-medium drop-shadow-md">1.2K</span>
                                     </div>
+                                    <!-- Comment -->
                                     <div class="flex flex-col items-center">
-                                        <svg class="w-6 h-6 text-white drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-                                        </svg>
-                                        <span class="text-white text-xs mt-1 drop-shadow-md">48</span>
+                                        <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                                            <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+                                            </svg>
+                                        </div>
+                                        <span class="text-white text-xs mt-1 font-medium drop-shadow-md">48</span>
                                     </div>
+                                    <!-- Share -->
                                     <div class="flex flex-col items-center">
-                                        <svg class="w-6 h-6 text-white drop-shadow-md" fill="currentColor" viewBox="0 0 24 24">
-                                            <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8-8-8z" />
-                                        </svg>
+                                        <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                                            <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M21.707 11.293l-8-8A1 1 0 0012 4v3.545A11.015 11.015 0 002 18.5V20a1 1 0 001.784.62 11.456 11.456 0 018.216-4.073V20a1 1 0 001.707.707l8-8a1 1 0 000-1.414z"/>
+                                            </svg>
+                                        </div>
                                     </div>
+                                    <!-- Music/Audio -->
                                     <div class="flex flex-col items-center">
-                                        <svg class="w-6 h-6 text-white drop-shadow-md" fill="currentColor" viewBox="0 0 24 24">
-                                            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
-                                        </svg>
+                                        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center border-2 border-white overflow-hidden">
+                                            <svg class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                                            </svg>
+                                        </div>
                                     </div>
                                 </div>
-                                <!-- Bottom content with black bar -->
-                                <div class="absolute bottom-3 left-2 right-12">
-                                    <div class="bg-black/60 px-3 py-2 rounded-lg">
-                                        <div class="flex items-center mb-1.5">
-                                            <div v-if="brandLogoUrl" class="w-7 h-7 rounded-full overflow-hidden">
-                                                <img :src="brandLogoUrl" :alt="displayBrandNameFb" class="w-full h-full object-cover" />
-                                            </div>
-                                            <div v-else class="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold">
-                                                {{ brandInitials }}
-                                            </div>
-                                            <span class="ml-2 text-white text-sm font-semibold">{{ displayBrandNameFb }}</span>
-                                            <button class="ml-2 px-2 py-0.5 bg-blue-500 rounded text-white text-xs font-semibold">Follow</button>
+                                <!-- Bottom content -->
+                                <div class="absolute bottom-4 left-3 right-14">
+                                    <!-- Profile + Follow -->
+                                    <div class="flex items-center mb-2">
+                                        <div v-if="brandLogoUrl" class="w-9 h-9 rounded-full overflow-hidden border-2 border-white">
+                                            <img :src="brandLogoUrl" :alt="displayBrandNameFb" class="w-full h-full object-cover" />
                                         </div>
-                                        <p class="text-white text-sm line-clamp-2">{{ truncatedCaption || 'Your caption here...' }}</p>
-                                        <!-- Audio bar -->
-                                        <div class="flex items-center mt-1.5">
-                                            <svg class="w-3 h-3 text-white mr-1" fill="currentColor" viewBox="0 0 24 24">
-                                                <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
-                                            </svg>
-                                            <span class="text-white text-xs">Original Audio</span>
+                                        <div v-else class="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-bold border-2 border-white">
+                                            {{ brandInitials }}
                                         </div>
+                                        <span class="ml-2 text-white text-sm font-semibold drop-shadow-md">{{ displayBrandNameFb }}</span>
+                                        <span class="mx-1 text-white/60">·</span>
+                                        <button class="text-white text-sm font-semibold drop-shadow-md">Follow</button>
+                                    </div>
+                                    <!-- Caption -->
+                                    <p class="text-white text-sm drop-shadow-md line-clamp-2 mb-2">{{ truncatedCaption || 'Your caption here...' }}</p>
+                                    <!-- Audio bar -->
+                                    <div class="flex items-center">
+                                        <svg class="w-4 h-4 text-white mr-2" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                                        </svg>
+                                        <span class="text-white text-xs drop-shadow-md">Original audio · {{ displayBrandNameFb }}</span>
                                     </div>
                                 </div>
                             </div>
@@ -1050,9 +1049,6 @@ const exportAsJpeg = async () => {
                                         </div>
                                     </button>
                                     <!-- Duration badge -->
-                                    <div v-if="videoDuration" class="absolute top-14 right-3 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded z-20">
-                                        {{ formatDuration(videoDuration) }}
-                                    </div>
                                 </template>
                                 <div v-else class="absolute inset-0 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 flex items-center justify-center">
                                     <div class="text-center text-white">
@@ -1103,29 +1099,29 @@ const exportAsJpeg = async () => {
                             </div>
 
                         </div>
+
+                        <!-- Export Button -->
+                        <div v-if="previewUrl" class="mt-4 text-center">
+                            <button
+                                @click="exportAsJpeg"
+                                :disabled="exporting"
+                                class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <svg v-if="!exporting" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                <svg v-else class="w-5 h-5 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                {{ exporting ? 'Exporting...' : 'Export as JPEG' }}
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Export Button -->
-                <div v-if="previewUrl" class="mt-6 text-center">
-                    <button
-                        @click="exportAsJpeg"
-                        :disabled="exporting"
-                        class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        <svg v-if="!exporting" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                        <svg v-else class="w-5 h-5 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        {{ exporting ? 'Exporting...' : 'Export as JPEG' }}
-                    </button>
-                </div>
-
                 <div class="mt-8 text-center">
-                    <p class="text-gray-600 dark:text-gray-400 mb-4">Want to save your mockups and get team approvals?</p>
+                    <p class="text-gray-600 dark:text-gray-400 mb-4">Like what you see? Create a free account to save mockups, invite clients, and manage approvals.</p>
                     <RouterLink
                         to="/register"
                         class="inline-block bg-primary-600 text-white px-6 py-3 rounded-md font-medium hover:bg-primary-700"
@@ -1134,30 +1130,167 @@ const exportAsJpeg = async () => {
                     </RouterLink>
                 </div>
 
-                <!-- Discord Section -->
-                <div class="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
-                    <div class="text-center">
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Join Our Community</h3>
-                        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                            We're still in beta. Join our Discord to get updates and share feedback.
-                        </p>
-                        <a
-                            href="https://discord.gg/9RQWcmZdzR"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            class="mt-4 inline-flex items-center gap-2 px-6 py-2 bg-[#5865F2] text-white rounded-md hover:bg-[#4752C4] transition-colors"
-                        >
-                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+            </div>
+
+            <!-- Pain Points Section -->
+            <div class="mt-24 text-center">
+                <h2 class="text-3xl font-bold text-gray-900 dark:text-white">Sound Familiar?</h2>
+                <div class="mt-10 grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Pain Point 1 -->
+                    <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-6 text-left">
+                        <div class="w-12 h-12 bg-amber-100 dark:bg-amber-900/40 rounded-lg flex items-center justify-center mb-4">
+                            <svg class="w-6 h-6 text-amber-600 dark:text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
-                            Join Discord
-                        </a>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">They can't picture it</h3>
+                        <p class="text-gray-600 dark:text-gray-400 text-sm">
+                            Clients can't visualize posts until you screenshot every platform. Again.
+                        </p>
+                    </div>
+
+                    <!-- Pain Point 2 -->
+                    <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-6 text-left">
+                        <div class="w-12 h-12 bg-amber-100 dark:bg-amber-900/40 rounded-lg flex items-center justify-center mb-4">
+                            <svg class="w-6 h-6 text-amber-600 dark:text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Changes lost in threads</h3>
+                        <p class="text-gray-600 dark:text-gray-400 text-sm">
+                            Feedback scattered across email, Slack, and texts. Which version got approved?
+                        </p>
+                    </div>
+
+                    <!-- Pain Point 3 -->
+                    <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-6 text-left">
+                        <div class="w-12 h-12 bg-amber-100 dark:bg-amber-900/40 rounded-lg flex items-center justify-center mb-4">
+                            <svg class="w-6 h-6 text-amber-600 dark:text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Waiting kills momentum</h3>
+                        <p class="text-gray-600 dark:text-gray-400 text-sm">
+                            Content calendar says "post today." Client last replied 3 days ago.
+                        </p>
                     </div>
                 </div>
             </div>
 
+            <!-- How It Works Section -->
+            <div class="mt-24">
+                <h2 class="text-3xl font-bold text-gray-900 dark:text-white text-center mb-12">Three Steps to Faster Approvals</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <!-- Step 1 -->
+                    <div class="text-center">
+                        <div class="w-16 h-16 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <span class="text-2xl font-bold text-primary-600 dark:text-primary-500">1</span>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Upload your content</h3>
+                        <p class="text-gray-600 dark:text-gray-400 text-sm">
+                            Add your image, video, and caption. Pick your platform.
+                        </p>
+                    </div>
+
+                    <!-- Step 2 -->
+                    <div class="text-center">
+                        <div class="w-16 h-16 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <span class="text-2xl font-bold text-primary-600 dark:text-primary-500">2</span>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Show them the real thing</h3>
+                        <p class="text-gray-600 dark:text-gray-400 text-sm">
+                            Generate realistic mockups they can actually see.
+                        </p>
+                    </div>
+
+                    <!-- Step 3 -->
+                    <div class="text-center">
+                        <div class="w-16 h-16 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <span class="text-2xl font-bold text-primary-600 dark:text-primary-500">3</span>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Get sign-off in one click</h3>
+                        <p class="text-gray-600 dark:text-gray-400 text-sm">
+                            Share a link. They approve or request changes in one click.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Features Section -->
+            <div class="mt-24">
+                <h2 class="text-3xl font-bold text-gray-900 dark:text-white text-center mb-12">Everything You Need for Smooth Approvals</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Feature 1 -->
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm dark:shadow-gray-900/30 border border-gray-100 dark:border-gray-700">
+                        <div class="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center mb-4">
+                            <svg class="w-5 h-5 text-primary-600 dark:text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-base font-semibold text-gray-900 dark:text-white mb-2">Multi-Platform Mockups</h3>
+                        <p class="text-gray-600 dark:text-gray-400 text-sm">Instagram and Facebook feeds, stories, and reels.</p>
+                    </div>
+
+                    <!-- Feature 2 -->
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm dark:shadow-gray-900/30 border border-gray-100 dark:border-gray-700">
+                        <div class="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center mb-4">
+                            <svg class="w-5 h-5 text-primary-600 dark:text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-base font-semibold text-gray-900 dark:text-white mb-2">Catch Mistakes Before Posting</h3>
+                        <p class="text-gray-600 dark:text-gray-400 text-sm">Warnings for caption length, aspect ratios, and duration.</p>
+                    </div>
+
+                    <!-- Feature 3 -->
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm dark:shadow-gray-900/30 border border-gray-100 dark:border-gray-700">
+                        <div class="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center mb-4">
+                            <svg class="w-5 h-5 text-primary-600 dark:text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                            </svg>
+                        </div>
+                        <h3 class="text-base font-semibold text-gray-900 dark:text-white mb-2">Multi-Brand Support</h3>
+                        <p class="text-gray-600 dark:text-gray-400 text-sm">Separate workflows for each client or brand.</p>
+                    </div>
+
+                    <!-- Feature 4 -->
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm dark:shadow-gray-900/30 border border-gray-100 dark:border-gray-700">
+                        <div class="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center mb-4">
+                            <svg class="w-5 h-5 text-primary-600 dark:text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-base font-semibold text-gray-900 dark:text-white mb-2">No Login Required for Clients</h3>
+                        <p class="text-gray-600 dark:text-gray-400 text-sm">Clients approve via link - no account needed.</p>
+                    </div>
+
+                    <!-- Feature 5 -->
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm dark:shadow-gray-900/30 border border-gray-100 dark:border-gray-700">
+                        <div class="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center mb-4">
+                            <svg class="w-5 h-5 text-primary-600 dark:text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-base font-semibold text-gray-900 dark:text-white mb-2">Built for Teams</h3>
+                        <p class="text-gray-600 dark:text-gray-400 text-sm">Creators, reviewers, and managers with role-based access.</p>
+                    </div>
+
+                    <!-- Feature 6 -->
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm dark:shadow-gray-900/30 border border-gray-100 dark:border-gray-700">
+                        <div class="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center mb-4">
+                            <svg class="w-5 h-5 text-primary-600 dark:text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                        </div>
+                        <h3 class="text-base font-semibold text-gray-900 dark:text-white mb-2">Export Beautiful Mockups</h3>
+                        <p class="text-gray-600 dark:text-gray-400 text-sm">Download JPEGs for presentations and reports.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Who It's For Section -->
             <div id="features" class="mt-24">
-                <h2 class="text-3xl font-bold text-gray-900 dark:text-white text-center mb-12">Who It's For</h2>
+                <h2 class="text-3xl font-bold text-gray-900 dark:text-white text-center mb-12">Built For People Who Manage Content for Others</h2>
                 <div class="grid grid-cols-1 gap-8 md:grid-cols-3">
                     <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow dark:shadow-gray-900/30">
                         <div class="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center mb-4">
@@ -1167,8 +1300,9 @@ const exportAsJpeg = async () => {
                         </div>
                         <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Marketing Agencies</h3>
                         <p class="mt-2 text-gray-600 dark:text-gray-400">
-                            Teams managing multiple client accounts who need streamlined approval workflows.
+                            Keep every client organized with separate workflows and team access.
                         </p>
+                        <span class="inline-block mt-3 px-3 py-1 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 text-xs font-medium rounded-full">Multi-brand support</span>
                     </div>
                     <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow dark:shadow-gray-900/30">
                         <div class="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center mb-4">
@@ -1176,10 +1310,11 @@ const exportAsJpeg = async () => {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
                         </div>
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Freelance Creators</h3>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Freelance Social Media Managers</h3>
                         <p class="mt-2 text-gray-600 dark:text-gray-400">
-                            Social media managers and content creators seeking professional client interactions.
+                            Look professional. Close the feedback loop faster.
                         </p>
+                        <span class="inline-block mt-3 px-3 py-1 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 text-xs font-medium rounded-full">No client login needed</span>
                     </div>
                     <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow dark:shadow-gray-900/30">
                         <div class="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center mb-4">
@@ -1187,14 +1322,42 @@ const exportAsJpeg = async () => {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                             </svg>
                         </div>
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">In-House Teams</h3>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">In-House Brand Teams</h3>
                         <p class="mt-2 text-gray-600 dark:text-gray-400">
-                            Brand teams coordinating with external stakeholders on content approval.
+                            Get sign-off from stakeholders before anything goes live.
                         </p>
+                        <span class="inline-block mt-3 px-3 py-1 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 text-xs font-medium rounded-full">Clear approval trail</span>
                     </div>
                 </div>
             </div>
         </main>
+
+        <!-- Final CTA Section -->
+        <div class="bg-primary-600 dark:bg-primary-700">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
+                <h2 class="text-3xl font-bold text-white mb-4">Ready to Streamline Your Approvals?</h2>
+                <p class="text-primary-100 mb-8 max-w-2xl mx-auto">Start your free trial today. No credit card required.</p>
+                <div class="flex flex-col sm:flex-row justify-center gap-4">
+                    <RouterLink
+                        to="/register"
+                        class="bg-white text-primary-600 px-8 py-3 rounded-md text-lg font-medium hover:bg-primary-50 transition-colors"
+                    >
+                        Get Started Free
+                    </RouterLink>
+                    <a
+                        href="#demo"
+                        class="text-white border border-white/30 px-8 py-3 rounded-md text-lg font-medium hover:bg-white/10 transition-colors"
+                    >
+                        Try the Demo First
+                    </a>
+                </div>
+                <p class="mt-8 text-primary-200 text-sm">
+                    We're in beta.
+                    <a href="https://discord.gg/9RQWcmZdzR" target="_blank" rel="noopener noreferrer" class="underline hover:text-white">Join our Discord</a>
+                    for updates and feedback.
+                </p>
+            </div>
+        </div>
 
         <Footer />
 
