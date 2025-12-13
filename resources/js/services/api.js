@@ -67,6 +67,9 @@ export const brandApi = {
     list: () => api.get('/brands'),
     get: (id) => api.get(`/brands/${id}`),
     create: (data) => api.post('/brands', data),
+    createWithFormData: (formData) => api.post('/brands', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    }),
     update: (id, data) => api.put(`/brands/${id}`, data),
     updateWithLogo: (id, formData) => api.post(`/brands/${id}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },

@@ -7,6 +7,7 @@
         "dev": "vite --host"
     },
     "dependencies": {
+        "@sentry/vue": "^10.30.0",
         "@vueuse/core": "^13.0.0",
         "html2canvas-pro": "^1.5.8",
         "laravel-echo": "^1.19.0",
