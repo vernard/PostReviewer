@@ -164,14 +164,16 @@ onMounted(fetchUsers);
                         </div>
                         <button
                             @click="sortDirection = sortDirection === 'desc' ? 'asc' : 'desc'; fetchUsers()"
-                            class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600"
+                            class="inline-flex items-center gap-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 text-sm"
+                            :title="sortDirection === 'desc' ? 'Highest first' : 'Lowest first'"
                         >
-                            <svg v-if="sortDirection === 'desc'" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg v-if="sortDirection === 'desc'" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                             </svg>
-                            <svg v-else class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
                             </svg>
+                            <span>{{ sortDirection === 'desc' ? 'High→Low' : 'Low→High' }}</span>
                         </button>
                     </div>
                 </div>
