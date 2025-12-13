@@ -1,9 +1,10 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter, useRoute, RouterLink } from 'vue-router';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { postApi, mediaApi } from '@/services/api';
 import { useBrandStore } from '@/stores/brand';
+import { validatePost, getCaptionStatus, PLATFORM_LIMITS } from '@/utils/platformValidation';
 
 const router = useRouter();
 const route = useRoute();
@@ -55,10 +56,21 @@ const facebookDisplayName = computed(() =>
     selectedBrand.value?.facebook_page_name || selectedBrand.value?.name || 'Brand'
 );
 
+// Platform validation
+const validation = computed(() => {
+    const media = selectedMedia.value.length > 0 ? selectedMedia.value[0] : null;
+    return validatePost(form.value.platforms, media, form.value.caption);
+});
+
+const captionStatus = computed(() => {
+    return getCaptionStatus(form.value.platforms, form.value.caption?.length || 0);
+});
+
 const canSubmit = computed(() => {
     return form.value.brand_id &&
            form.value.title.trim() &&
-           form.value.platforms.length > 0;
+           form.value.platforms.length > 0 &&
+           !validation.value.hasErrors;
 });
 
 const truncatedCaption = computed(() => {
@@ -82,6 +94,64 @@ watch(() => form.value.platforms, (newPlatforms) => {
 watch(selectedMedia, () => {
     isPlayingVideo.value = false;
 }, { deep: true });
+
+// Echo channel for real-time updates
+let echoChannel = null;
+
+// Handle media processed event from WebSocket
+const handleMediaProcessed = (event) => {
+    const { action, mediaId, media } = event;
+
+    if (action === 'ready' && media) {
+        // Update in brandMedia array
+        const brandIndex = brandMedia.value.findIndex(m => m.id === mediaId);
+        if (brandIndex !== -1) {
+            brandMedia.value[brandIndex] = media;
+        }
+
+        // Update in selectedMedia array
+        const selectedIndex = selectedMedia.value.findIndex(m => m.id === mediaId);
+        if (selectedIndex !== -1) {
+            selectedMedia.value[selectedIndex] = media;
+        }
+    } else if (action === 'failed') {
+        // Update status to failed
+        const brandIndex = brandMedia.value.findIndex(m => m.id === mediaId);
+        if (brandIndex !== -1) {
+            brandMedia.value[brandIndex].status = 'failed';
+        }
+
+        const selectedIndex = selectedMedia.value.findIndex(m => m.id === mediaId);
+        if (selectedIndex !== -1) {
+            selectedMedia.value[selectedIndex].status = 'failed';
+        }
+    }
+};
+
+// Subscribe to brand channel for media updates
+const subscribeToMediaUpdates = () => {
+    if (!window.Echo || !brandStore.activeBrandId) return;
+
+    unsubscribeFromMediaUpdates();
+
+    try {
+        echoChannel = window.Echo.private(`brand.${brandStore.activeBrandId}`);
+        echoChannel.listen('.media.processed', handleMediaProcessed);
+    } catch (e) {
+        console.warn('Failed to subscribe to media channel:', e);
+    }
+};
+
+const unsubscribeFromMediaUpdates = () => {
+    if (echoChannel && window.Echo) {
+        try {
+            window.Echo.leave(`brand.${brandStore.activeBrandId}`);
+        } catch (e) {
+            // Ignore errors when leaving channel
+        }
+        echoChannel = null;
+    }
+};
 
 // Check brand and fetch media on mount
 const initPage = () => {
@@ -211,9 +281,38 @@ const handleFileUpload = (event) => {
     event.target.value = '';
 };
 
+// File size limits (in bytes)
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
+const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const SUPPORTED_VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/x-msvideo'];
+
+const formatFileSize = (bytes) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+};
+
 const uploadFile = async (file) => {
     if (!brandStore.activeBrandId) {
         error.value = 'Please select a brand first';
+        return;
+    }
+
+    // Validate file type
+    const isImage = SUPPORTED_IMAGE_TYPES.includes(file.type);
+    const isVideo = SUPPORTED_VIDEO_TYPES.includes(file.type);
+
+    if (!isImage && !isVideo) {
+        error.value = 'Unsupported file type. Please upload JPG, PNG, WebP images or MP4, MOV, AVI videos.';
+        return;
+    }
+
+    // Validate file size
+    const maxSize = isImage ? MAX_IMAGE_SIZE : MAX_VIDEO_SIZE;
+    if (file.size > maxSize) {
+        const maxSizeMB = isImage ? '10MB' : '100MB';
+        error.value = `File too large (${formatFileSize(file.size)}). Maximum size for ${isImage ? 'images' : 'videos'} is ${maxSizeMB}.`;
         return;
     }
 
@@ -298,6 +397,11 @@ watch(() => brandStore.activeBrandId, (newVal, oldVal) => {
 
 onMounted(() => {
     initPage();
+    subscribeToMediaUpdates();
+});
+
+onUnmounted(() => {
+    unsubscribeFromMediaUpdates();
 });
 </script>
 
@@ -399,13 +503,25 @@ onMounted(() => {
                                     :key="media.id"
                                     class="relative aspect-square rounded-lg overflow-hidden group"
                                 >
+                                    <!-- Processing state -->
+                                    <div
+                                        v-if="media.status === 'processing'"
+                                        class="w-full h-full bg-gray-900 flex flex-col items-center justify-center"
+                                    >
+                                        <svg class="w-8 h-8 text-gray-400 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/>
+                                        </svg>
+                                        <span class="text-gray-400 text-xs mt-2">Processing...</span>
+                                    </div>
+                                    <!-- Ready state -->
                                     <img
+                                        v-else
                                         :src="media.thumbnail_url || media.url"
                                         class="w-full h-full object-cover"
                                     />
                                     <!-- Video play button for selected media -->
                                     <div
-                                        v-if="isVideo(media)"
+                                        v-if="isVideo(media) && media.status !== 'processing'"
                                         class="absolute inset-0 flex items-center justify-center"
                                     >
                                         <button
@@ -419,7 +535,7 @@ onMounted(() => {
                                     </div>
                                     <!-- Video duration badge -->
                                     <div
-                                        v-if="isVideo(media) && media.duration"
+                                        v-if="isVideo(media) && media.duration && media.status !== 'processing'"
                                         class="absolute bottom-1 right-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded"
                                     >
                                         {{ formatDuration(media.duration) }}
@@ -469,10 +585,25 @@ onMounted(() => {
                                     <textarea
                                         v-model="form.caption"
                                         rows="4"
-                                        class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                                        :class="[
+                                            'mt-1 block w-full border rounded-md px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-primary-500 focus:border-primary-500',
+                                            captionStatus.status === 'error' ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600'
+                                        ]"
                                         placeholder="Write your post caption here..."
                                     />
-                                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ form.caption.length }} characters</p>
+                                    <p
+                                        :class="[
+                                            'mt-1 text-xs',
+                                            captionStatus.status === 'error' ? 'text-red-500 dark:text-red-400 font-medium' :
+                                            captionStatus.status === 'warning' ? 'text-amber-500 dark:text-amber-400' :
+                                            'text-gray-500 dark:text-gray-400'
+                                        ]"
+                                    >
+                                        {{ form.caption.length.toLocaleString() }}
+                                        <template v-if="captionStatus.limit"> / {{ captionStatus.limit.toLocaleString() }}</template>
+                                        characters
+                                        <template v-if="captionStatus.status === 'error'"> (over limit)</template>
+                                    </p>
                                 </div>
 
                                 <div>
@@ -505,6 +636,39 @@ onMounted(() => {
                                             </span>
                                             <span class="text-xs sm:text-sm text-gray-700 dark:text-gray-400">{{ platform.name }}</span>
                                         </label>
+                                    </div>
+                                </div>
+
+                                <!-- Platform Warnings -->
+                                <div v-if="validation.errors.length > 0 || validation.warnings.length > 0" class="mt-4 space-y-2">
+                                    <!-- Errors (blocking) -->
+                                    <div
+                                        v-for="(error, index) in validation.errors"
+                                        :key="'error-' + index"
+                                        class="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+                                    >
+                                        <svg class="w-5 h-5 text-red-500 dark:text-red-400 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                                        </svg>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-medium text-red-800 dark:text-red-300">{{ error.platformName }}</p>
+                                            <p class="text-sm text-red-600 dark:text-red-400">{{ error.message }}</p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Warnings (non-blocking) -->
+                                    <div
+                                        v-for="(warning, index) in validation.warnings"
+                                        :key="'warning-' + index"
+                                        class="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg"
+                                    >
+                                        <svg class="w-5 h-5 text-amber-500 dark:text-amber-400 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                        </svg>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-medium text-amber-800 dark:text-amber-300">{{ warning.platformName }}</p>
+                                            <p class="text-sm text-amber-600 dark:text-amber-400">{{ warning.message }}</p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -564,8 +728,8 @@ onMounted(() => {
                         >
                             <!-- Header -->
                             <div class="flex items-center p-3">
-                                <div v-if="selectedBrand?.logo_url" class="w-8 h-8 rounded-full overflow-hidden">
-                                    <img :src="selectedBrand.logo_url" :alt="selectedBrand.name" class="w-full h-full object-cover" />
+                                <div v-if="selectedBrand?.logo_flat_url" class="w-8 h-8 rounded-full overflow-hidden">
+                                    <img :src="selectedBrand.logo_flat_url" :alt="selectedBrand.name" class="w-full h-full object-cover" />
                                 </div>
                                 <div v-else class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
                                     {{ instagramDisplayName.charAt(0) }}
@@ -576,9 +740,19 @@ onMounted(() => {
                             </div>
                             <!-- Image/Video -->
                             <div class="aspect-square bg-black relative">
+                                <!-- Processing state -->
+                                <div
+                                    v-if="selectedMedia[0]?.status === 'processing'"
+                                    class="w-full h-full flex flex-col items-center justify-center"
+                                >
+                                    <svg class="w-12 h-12 text-gray-500 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/>
+                                    </svg>
+                                    <span class="text-gray-500 text-sm mt-2">Processing video...</span>
+                                </div>
                                 <!-- Video playing inline -->
                                 <video
-                                    v-if="isPlayingVideo && selectedMedia[0]?.type === 'video'"
+                                    v-else-if="isPlayingVideo && selectedMedia[0]?.type === 'video'"
                                     :src="selectedMedia[0].url"
                                     class="w-full h-full object-contain"
                                     autoplay
@@ -597,7 +771,7 @@ onMounted(() => {
                                 </div>
                                 <!-- Video play button -->
                                 <button
-                                    v-if="selectedMedia[0]?.type === 'video' && !isPlayingVideo"
+                                    v-if="selectedMedia[0]?.type === 'video' && !isPlayingVideo && selectedMedia[0]?.status !== 'processing'"
                                     @click="isPlayingVideo = true"
                                     class="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors"
                                 >
@@ -635,8 +809,8 @@ onMounted(() => {
                         >
                             <!-- Header -->
                             <div class="flex items-center p-3">
-                                <div v-if="selectedBrand?.logo_url" class="w-10 h-10 rounded-full overflow-hidden">
-                                    <img :src="selectedBrand.logo_url" :alt="selectedBrand.name" class="w-full h-full object-cover" />
+                                <div v-if="selectedBrand?.logo_flat_url" class="w-10 h-10 rounded-full overflow-hidden">
+                                    <img :src="selectedBrand.logo_flat_url" :alt="selectedBrand.name" class="w-full h-full object-cover" />
                                 </div>
                                 <div v-else class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">
                                     {{ facebookDisplayName.charAt(0) }}
@@ -652,9 +826,19 @@ onMounted(() => {
                             </div>
                             <!-- Image/Video -->
                             <div class="bg-black relative">
+                                <!-- Processing state -->
+                                <div
+                                    v-if="selectedMedia[0]?.status === 'processing'"
+                                    class="aspect-video flex flex-col items-center justify-center"
+                                >
+                                    <svg class="w-12 h-12 text-gray-500 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/>
+                                    </svg>
+                                    <span class="text-gray-500 text-sm mt-2">Processing video...</span>
+                                </div>
                                 <!-- Video playing inline -->
                                 <video
-                                    v-if="isPlayingVideo && selectedMedia[0]?.type === 'video'"
+                                    v-else-if="isPlayingVideo && selectedMedia[0]?.type === 'video'"
                                     :src="selectedMedia[0].url"
                                     class="w-full object-contain"
                                     autoplay
@@ -673,7 +857,7 @@ onMounted(() => {
                                 </div>
                                 <!-- Video play button -->
                                 <button
-                                    v-if="selectedMedia[0]?.type === 'video' && !isPlayingVideo"
+                                    v-if="selectedMedia[0]?.type === 'video' && !isPlayingVideo && selectedMedia[0]?.status !== 'processing'"
                                     @click="isPlayingVideo = true"
                                     class="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors"
                                 >
@@ -712,9 +896,19 @@ onMounted(() => {
                             v-else-if="previewPlatform === 'instagram_story'"
                             class="max-w-[280px] mx-auto bg-black rounded-2xl overflow-hidden aspect-[9/16] relative"
                         >
+                            <!-- Processing state -->
+                            <div
+                                v-if="selectedMedia[0]?.status === 'processing'"
+                                class="w-full h-full flex flex-col items-center justify-center"
+                            >
+                                <svg class="w-12 h-12 text-gray-500 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/>
+                                </svg>
+                                <span class="text-gray-500 text-sm mt-2">Processing video...</span>
+                            </div>
                             <!-- Video playing inline -->
                             <video
-                                v-if="isPlayingVideo && selectedMedia[0]?.type === 'video'"
+                                v-else-if="isPlayingVideo && selectedMedia[0]?.type === 'video'"
                                 :src="selectedMedia[0].url"
                                 class="w-full h-full object-cover"
                                 autoplay
@@ -733,7 +927,7 @@ onMounted(() => {
                             </div>
                             <!-- Video play button -->
                             <button
-                                v-if="selectedMedia[0]?.type === 'video' && !isPlayingVideo"
+                                v-if="selectedMedia[0]?.type === 'video' && !isPlayingVideo && selectedMedia[0]?.status !== 'processing'"
                                 @click="isPlayingVideo = true"
                                 class="absolute inset-0 flex items-center justify-center z-10"
                             >
@@ -753,8 +947,8 @@ onMounted(() => {
                             <div class="absolute top-4 left-0 right-0 px-3 flex items-center justify-between">
                                 <div class="flex items-center">
                                     <div class="p-0.5 rounded-full bg-gradient-to-br from-yellow-400 via-pink-500 to-purple-600">
-                                        <div v-if="selectedBrand?.logo_url" class="w-9 h-9 rounded-full overflow-hidden border-2 border-black bg-white">
-                                            <img :src="selectedBrand.logo_url" :alt="selectedBrand.name" class="w-full h-full object-cover" />
+                                        <div v-if="selectedBrand?.logo_flat_url" class="w-9 h-9 rounded-full overflow-hidden border-2 border-black bg-white">
+                                            <img :src="selectedBrand.logo_flat_url" :alt="selectedBrand.name" class="w-full h-full object-cover" />
                                         </div>
                                         <div v-else class="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold border-2 border-black">
                                             {{ instagramDisplayName.charAt(0) }}
@@ -793,9 +987,19 @@ onMounted(() => {
                             v-else-if="previewPlatform === 'instagram_reel'"
                             class="max-w-[280px] mx-auto bg-black rounded-2xl overflow-hidden aspect-[9/16] relative"
                         >
+                            <!-- Processing state -->
+                            <div
+                                v-if="selectedMedia[0]?.status === 'processing'"
+                                class="w-full h-full flex flex-col items-center justify-center"
+                            >
+                                <svg class="w-12 h-12 text-gray-500 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/>
+                                </svg>
+                                <span class="text-gray-500 text-sm mt-2">Processing video...</span>
+                            </div>
                             <!-- Video playing inline -->
                             <video
-                                v-if="isPlayingVideo && selectedMedia[0]?.type === 'video'"
+                                v-else-if="isPlayingVideo && selectedMedia[0]?.type === 'video'"
                                 :src="selectedMedia[0].url"
                                 class="w-full h-full object-cover"
                                 autoplay
@@ -814,7 +1018,7 @@ onMounted(() => {
                             </div>
                             <!-- Video play button -->
                             <button
-                                v-if="selectedMedia[0]?.type === 'video' && !isPlayingVideo"
+                                v-if="selectedMedia[0]?.type === 'video' && !isPlayingVideo && selectedMedia[0]?.status !== 'processing'"
                                 @click="isPlayingVideo = true"
                                 class="absolute inset-0 flex items-center justify-center z-10"
                             >
@@ -851,8 +1055,8 @@ onMounted(() => {
                                     </svg>
                                 </div>
                                 <div class="w-7 h-7 rounded border-2 border-white overflow-hidden shadow-md">
-                                    <div v-if="selectedBrand?.logo_url">
-                                        <img :src="selectedBrand.logo_url" class="w-full h-full object-cover" />
+                                    <div v-if="selectedBrand?.logo_flat_url">
+                                        <img :src="selectedBrand.logo_flat_url" class="w-full h-full object-cover" />
                                     </div>
                                     <div v-else class="w-full h-full bg-gradient-to-br from-purple-500 to-pink-500"></div>
                                 </div>
@@ -860,8 +1064,8 @@ onMounted(() => {
                             <!-- Bottom content -->
                             <div class="absolute bottom-4 left-3 right-14">
                                 <div class="flex items-center mb-2">
-                                    <div v-if="selectedBrand?.logo_url" class="w-8 h-8 rounded-full overflow-hidden">
-                                        <img :src="selectedBrand.logo_url" :alt="selectedBrand.name" class="w-full h-full object-cover" />
+                                    <div v-if="selectedBrand?.logo_flat_url" class="w-8 h-8 rounded-full overflow-hidden">
+                                        <img :src="selectedBrand.logo_flat_url" :alt="selectedBrand.name" class="w-full h-full object-cover" />
                                     </div>
                                     <div v-else class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
                                         {{ instagramDisplayName.charAt(0) }}
@@ -885,9 +1089,19 @@ onMounted(() => {
                             v-else-if="previewPlatform === 'facebook_story'"
                             class="max-w-[280px] mx-auto bg-gray-900 rounded-2xl overflow-hidden aspect-[9/16] relative"
                         >
+                            <!-- Processing state -->
+                            <div
+                                v-if="selectedMedia[0]?.status === 'processing'"
+                                class="w-full h-full flex flex-col items-center justify-center"
+                            >
+                                <svg class="w-12 h-12 text-gray-500 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/>
+                                </svg>
+                                <span class="text-gray-500 text-sm mt-2">Processing video...</span>
+                            </div>
                             <!-- Video playing inline -->
                             <video
-                                v-if="isPlayingVideo && selectedMedia[0]?.type === 'video'"
+                                v-else-if="isPlayingVideo && selectedMedia[0]?.type === 'video'"
                                 :src="selectedMedia[0].url"
                                 class="w-full h-full object-cover"
                                 autoplay
@@ -906,7 +1120,7 @@ onMounted(() => {
                             </div>
                             <!-- Video play button -->
                             <button
-                                v-if="selectedMedia[0]?.type === 'video' && !isPlayingVideo"
+                                v-if="selectedMedia[0]?.type === 'video' && !isPlayingVideo && selectedMedia[0]?.status !== 'processing'"
                                 @click="isPlayingVideo = true"
                                 class="absolute inset-0 flex items-center justify-center z-10"
                             >
@@ -926,8 +1140,8 @@ onMounted(() => {
                             <div class="absolute top-4 left-0 right-0 px-3 flex items-center justify-between">
                                 <div class="flex items-center">
                                     <div class="p-0.5 rounded-full bg-blue-500">
-                                        <div v-if="selectedBrand?.logo_url" class="w-10 h-10 rounded-full overflow-hidden border-2 border-black bg-black">
-                                            <img :src="selectedBrand.logo_url" :alt="selectedBrand.name" class="w-full h-full object-cover" />
+                                        <div v-if="selectedBrand?.logo_flat_url" class="w-10 h-10 rounded-full overflow-hidden border-2 border-black bg-white">
+                                            <img :src="selectedBrand.logo_flat_url" :alt="selectedBrand.name" class="w-full h-full object-cover" />
                                         </div>
                                         <div v-else class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold border-2 border-black">
                                             {{ facebookDisplayName.charAt(0) }}
@@ -1105,13 +1319,25 @@ onMounted(() => {
                                         isMediaSelected(media) ? 'border-primary-500 dark:border-primary-400 ring-2 ring-primary-200 dark:ring-primary-900/30' : 'border-transparent hover:border-gray-300 dark:hover:border-gray-600'
                                     ]"
                                 >
+                                    <!-- Processing state -->
+                                    <div
+                                        v-if="media.status === 'processing'"
+                                        class="w-full h-full bg-gray-900 flex flex-col items-center justify-center"
+                                    >
+                                        <svg class="w-8 h-8 text-gray-400 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/>
+                                        </svg>
+                                        <span class="text-gray-400 text-xs mt-2">Processing...</span>
+                                    </div>
+                                    <!-- Ready state -->
                                     <img
+                                        v-else
                                         :src="media.thumbnail_url || media.url"
                                         class="w-full h-full object-cover"
                                     />
                                     <!-- Video play button overlay -->
                                     <div
-                                        v-if="isVideo(media)"
+                                        v-if="isVideo(media) && media.status !== 'processing'"
                                         class="absolute inset-0 flex items-center justify-center"
                                     >
                                         <button
@@ -1125,7 +1351,7 @@ onMounted(() => {
                                     </div>
                                     <!-- Video duration badge -->
                                     <div
-                                        v-if="isVideo(media) && media.duration"
+                                        v-if="isVideo(media) && media.duration && media.status !== 'processing'"
                                         class="absolute bottom-1 right-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded"
                                     >
                                         {{ formatDuration(media.duration) }}
