@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Mail\InvitationMail;
 use App\Models\Invitation;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -84,8 +85,8 @@ class UserController extends Controller
             'role' => $request->role,
         ]);
 
-        // TODO: Send invitation email
-        // Mail::to($invitation->email)->send(new InvitationMail($invitation));
+        // Send invitation email
+        Mail::to($invitation->email)->queue(new InvitationMail($invitation));
 
         return response()->json([
             'invitation' => $invitation,

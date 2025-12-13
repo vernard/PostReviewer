@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Mail\PostSubmittedForApprovalMail;
 use App\Models\ApprovalRequest;
 use App\Models\Brand;
 use App\Models\Media;
 use App\Models\Post;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 class PostController extends Controller
 {
@@ -199,7 +202,15 @@ class PostController extends Controller
 
         $post->update(['status' => 'pending_approval']);
 
-        // TODO: Dispatch notification event
+        // Notify reviewers (managers in the same agency)
+        $reviewers = User::where('agency_id', $user->agency_id)
+            ->whereIn('role', ['admin', 'manager', 'reviewer'])
+            ->where('id', '!=', $user->id)
+            ->get();
+
+        foreach ($reviewers as $reviewer) {
+            Mail::to($reviewer->email)->queue(new PostSubmittedForApprovalMail($post));
+        }
 
         return response()->json([
             'post' => $post->fresh(['brand', 'creator', 'media', 'latestApprovalRequest']),

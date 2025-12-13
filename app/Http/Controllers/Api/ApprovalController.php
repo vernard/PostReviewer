@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Mail\PostApprovedMail;
+use App\Mail\PostChangesRequestedMail;
 use App\Models\ApprovalRequest;
 use App\Models\ApprovalResponse;
 use App\Models\Post;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 class ApprovalController extends Controller
 {
@@ -89,7 +92,8 @@ class ApprovalController extends Controller
         // Update post status
         $post->update(['status' => 'approved']);
 
-        // TODO: Dispatch notification event
+        // Notify the post creator
+        Mail::to($post->creator->email)->queue(new PostApprovedMail($post, $user->name));
 
         return response()->json([
             'approval_request' => $approvalRequest->fresh(['responses.user']),
@@ -140,7 +144,10 @@ class ApprovalController extends Controller
         // Update post status
         $post->update(['status' => 'changes_requested']);
 
-        // TODO: Dispatch notification event
+        // Notify the post creator
+        Mail::to($post->creator->email)->queue(
+            new PostChangesRequestedMail($post, $user->name, $request->comment)
+        );
 
         return response()->json([
             'approval_request' => $approvalRequest->fresh(['responses.user']),
