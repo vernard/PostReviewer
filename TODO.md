@@ -2,17 +2,14 @@
 
 ## In Progress
 
-## Paused
-- [ ] Make it easy to create multiple posts.
-    - Say, on "Posts" page, they should be able to drop in multiple files.
-    - Have multiple posts lined up like a gallery
-    - Show a table view above for each post, where they can copy paste multiple captions
-
 ## Backlog
 - [ ] Support Meta ad placement, but this will add more fields. We should consider how to handle this without making things complicated. Needs to be on home page too.
 - [ ] Blog feature? Thinking if this should be separate (like HUGO).
 - [ ] Add a payment gateway (Paddle, but may also use Xendit, PayPal)
-
+- [ ] Make it easy to create multiple posts.
+    - Say, on "Posts" page, they should be able to drop in multiple files.
+    - Have multiple posts lined up like a gallery
+    - Show a table view above for each post, where they can copy paste multiple captions
 
 ## For Testing
 - [ ] E2E tests with Playwright - Tests for Auth, Brand, Post, Approval workflows. Run: `npm run test:e2e` (all), `npm run test:e2e:headed` (visible browser), `npm run test:e2e:ui` (Playwright UI). Some tests may need selectors adjusted as UI changes.
