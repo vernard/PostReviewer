@@ -26,6 +26,8 @@ const uploadForm = ref({
     brand_id: brandStore.activeBrandId || '',
     files: [],
 });
+const videoPreview = ref(null);
+const imagePreview = ref(null);
 
 const fetchMedia = async () => {
     try {
@@ -113,6 +115,31 @@ const formatDate = (dateString) => {
         day: 'numeric',
         year: 'numeric',
     });
+};
+
+const formatDuration = (seconds) => {
+    if (!seconds) return '';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+const playVideo = (item, event) => {
+    event.stopPropagation();
+    videoPreview.value = item;
+};
+
+const closeVideoPreview = () => {
+    videoPreview.value = null;
+};
+
+const viewImage = (item, event) => {
+    event.stopPropagation();
+    imagePreview.value = item;
+};
+
+const closeImagePreview = () => {
+    imagePreview.value = null;
 };
 
 watch(filters, () => {
@@ -223,43 +250,71 @@ onMounted(() => {
                             :alt="item.original_filename"
                             class="w-full h-full object-cover"
                         />
-                        <video
-                            v-else
-                            :src="item.url"
+                        <img
+                            v-else-if="item.thumbnail_url"
+                            :src="item.thumbnail_url"
+                            :alt="item.original_filename"
                             class="w-full h-full object-cover"
                         />
-
-                        <!-- Video indicator -->
-                        <div v-if="item.type === 'video'" class="absolute bottom-2 left-2 bg-black bg-opacity-60 text-white px-2 py-0.5 rounded text-xs">
-                            Video
+                        <div
+                            v-else
+                            class="w-full h-full flex items-center justify-center bg-gray-200 dark:bg-gray-600"
+                        >
+                            <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
                         </div>
 
-                        <!-- Hover overlay -->
-                        <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                            <div class="flex gap-2">
-                                <a
-                                    :href="item.url"
-                                    target="_blank"
-                                    class="p-2 bg-white dark:bg-gray-700 rounded-full hover:bg-gray-100 dark:hover:bg-gray-600"
-                                >
-                                    <svg class="w-5 h-5 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                    </svg>
-                                </a>
-                                <button
-                                    @click="deleteMedia(item)"
-                                    class="p-2 bg-white dark:bg-gray-700 rounded-full hover:bg-red-100 dark:hover:bg-red-900"
-                                >
-                                    <svg class="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                </button>
-                            </div>
+                        <!-- Video play button overlay (centered only) -->
+                        <div
+                            v-if="item.type === 'video'"
+                            class="absolute inset-0 flex items-center justify-center pointer-events-none"
+                        >
+                            <button
+                                @click="playVideo(item, $event)"
+                                class="w-12 h-12 z-10 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors group-hover:scale-110 pointer-events-auto"
+                            >
+                                <svg class="w-6 h-6 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M8 5v14l11-7z" />
+                                </svg>
+                            </button>
                         </div>
+
+                        <!-- Video duration badge -->
+                        <div
+                            v-if="item.type === 'video' && item.duration"
+                            class="absolute bottom-2 left-2 z-20 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded pointer-events-none"
+                        >
+                            {{ formatDuration(item.duration) }}
+                        </div>
+
+                        <!-- View button for images (centered) -->
+                        <div
+                            v-if="item.type === 'image'"
+                            class="absolute inset-0 flex items-center justify-center pointer-events-none"
+                        >
+                            <button
+                                @click="viewImage(item, $event)"
+                                class="w-12 h-12 z-10 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors group-hover:scale-110 pointer-events-auto opacity-0 group-hover:opacity-100"
+                            >
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- Delete button (top right corner for all) -->
+                        <button
+                            @click.stop="deleteMedia(item)"
+                            class="absolute top-2 right-2 z-20 p-1.5 bg-white dark:bg-gray-700 rounded-full hover:bg-red-100 dark:hover:bg-red-900 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                            <svg class="w-4 h-4 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
 
                         <!-- Info tooltip on hover -->
-                        <div class="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div class="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                             <p class="text-white text-xs truncate">{{ item.original_filename }}</p>
                             <p class="text-white/70 text-xs">{{ formatFileSize(item.size) }}</p>
                         </div>
@@ -354,6 +409,105 @@ onMounted(() => {
                             class="bg-primary-600 dark:bg-primary-500 text-white px-4 py-2 rounded-md hover:bg-primary-700 dark:hover:bg-primary-600 disabled:opacity-50"
                         >
                             {{ uploading ? `Uploading... ${uploadProgress}%` : 'Upload' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Video Preview Modal -->
+        <div v-if="videoPreview" class="fixed inset-0 z-[60] overflow-y-auto">
+            <div class="flex items-center justify-center min-h-screen px-4">
+                <div class="fixed inset-0 bg-black bg-opacity-90" @click="closeVideoPreview"></div>
+
+                <div class="relative max-w-4xl w-full">
+                    <!-- Close button -->
+                    <button
+                        @click="closeVideoPreview"
+                        class="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors"
+                    >
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+
+                    <!-- Video player -->
+                    <video
+                        :src="videoPreview.url"
+                        controls
+                        autoplay
+                        class="w-full rounded-lg shadow-2xl"
+                    >
+                        Your browser does not support the video tag.
+                    </video>
+
+                    <!-- Video info -->
+                    <div class="mt-4 flex items-center justify-between">
+                        <div class="text-white">
+                            <p class="font-medium">{{ videoPreview.original_filename }}</p>
+                            <p class="text-sm text-gray-400">
+                                {{ formatDuration(videoPreview.duration) }}
+                                <span v-if="videoPreview.width && videoPreview.height">
+                                    &bull; {{ videoPreview.width }}x{{ videoPreview.height }}
+                                </span>
+                                <span v-if="videoPreview.size">
+                                    &bull; {{ formatFileSize(videoPreview.size) }}
+                                </span>
+                            </p>
+                        </div>
+                        <button
+                            @click="deleteMedia(videoPreview); closeVideoPreview()"
+                            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md font-medium transition-colors"
+                        >
+                            Delete Video
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Image Preview Modal -->
+        <div v-if="imagePreview" class="fixed inset-0 z-[60] overflow-y-auto">
+            <div class="flex items-center justify-center min-h-screen px-4">
+                <div class="fixed inset-0 bg-black bg-opacity-90" @click="closeImagePreview"></div>
+
+                <div class="relative max-w-4xl w-full">
+                    <!-- Close button -->
+                    <button
+                        @click="closeImagePreview"
+                        class="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors"
+                    >
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+
+                    <!-- Image -->
+                    <img
+                        :src="imagePreview.url"
+                        :alt="imagePreview.original_filename"
+                        class="w-full rounded-lg shadow-2xl"
+                    />
+
+                    <!-- Image info -->
+                    <div class="mt-4 flex items-center justify-between">
+                        <div class="text-white">
+                            <p class="font-medium">{{ imagePreview.original_filename }}</p>
+                            <p class="text-sm text-gray-400">
+                                <span v-if="imagePreview.width && imagePreview.height">
+                                    {{ imagePreview.width }}x{{ imagePreview.height }}
+                                </span>
+                                <span v-if="imagePreview.size">
+                                    <span v-if="imagePreview.width && imagePreview.height">&bull;</span>
+                                    {{ formatFileSize(imagePreview.size) }}
+                                </span>
+                            </p>
+                        </div>
+                        <button
+                            @click="deleteMedia(imagePreview); closeImagePreview()"
+                            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md font-medium transition-colors"
+                        >
+                            Delete Image
                         </button>
                     </div>
                 </div>

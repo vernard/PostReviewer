@@ -12,9 +12,13 @@ const brandStore = useBrandStore();
 const brandMedia = ref([]);
 const loading = ref(false);
 const loadingMedia = ref(false);
+const loadingMoreMedia = ref(false);
+const mediaCurrentPage = ref(1);
+const mediaHasMorePages = ref(false);
 const uploading = ref(false);
 const uploadProgress = ref(0);
 const error = ref('');
+const mediaScrollContainer = ref(null);
 
 // Use the active brand from the global store
 const brand = computed(() => brandStore.activeBrand);
@@ -28,7 +32,10 @@ const form = ref({
 
 const selectedMedia = ref([]);
 const showMediaLibrary = ref(false);
+const showBrandDropdown = ref(false);
 const previewPlatform = ref('');
+const videoPreview = ref(null); // Media item being previewed
+const isPlayingVideo = ref(false); // Whether video is playing inline in mockup
 
 const platforms = [
     { id: 'facebook_feed', name: 'Facebook Feed', icon: 'FB' },
@@ -71,6 +78,11 @@ watch(() => form.value.platforms, (newPlatforms) => {
     }
 }, { deep: true });
 
+// Reset video playback when media changes
+watch(selectedMedia, () => {
+    isPlayingVideo.value = false;
+}, { deep: true });
+
 // Check brand and fetch media on mount
 const initPage = () => {
     if (!brandStore.activeBrand) {
@@ -86,20 +98,58 @@ const initPage = () => {
     fetchBrandMedia();
 };
 
-const fetchBrandMedia = async () => {
+const fetchBrandMedia = async (page = 1) => {
     if (!brandStore.activeBrandId) {
         brandMedia.value = [];
         return;
     }
 
     try {
-        loadingMedia.value = true;
-        const response = await mediaApi.list({ brand_id: brandStore.activeBrandId });
-        brandMedia.value = response.data.data || response.data || [];
+        if (page === 1) {
+            loadingMedia.value = true;
+            brandMedia.value = [];
+        } else {
+            loadingMoreMedia.value = true;
+        }
+
+        const response = await mediaApi.list({
+            brand_id: brandStore.activeBrandId,
+            page: page,
+            per_page: 24
+        });
+
+        const data = response.data.data || response.data || [];
+        const lastPage = response.data.last_page || 1;
+
+        if (page === 1) {
+            brandMedia.value = data;
+        } else {
+            brandMedia.value = [...brandMedia.value, ...data];
+        }
+
+        mediaCurrentPage.value = page;
+        mediaHasMorePages.value = page < lastPage;
     } catch (err) {
         console.error('Failed to fetch media:', err);
     } finally {
         loadingMedia.value = false;
+        loadingMoreMedia.value = false;
+    }
+};
+
+const loadMoreMedia = () => {
+    if (!loadingMoreMedia.value && mediaHasMorePages.value) {
+        fetchBrandMedia(mediaCurrentPage.value + 1);
+    }
+};
+
+const handleMediaScroll = (event) => {
+    const container = event.target;
+    const scrollBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+
+    // Load more when within 200px of bottom
+    if (scrollBottom < 200 && !loadingMoreMedia.value && mediaHasMorePages.value) {
+        loadMoreMedia();
     }
 };
 
@@ -115,6 +165,26 @@ const toggleMedia = (media) => {
 
 const isMediaSelected = (media) => {
     return selectedMedia.value.some(m => m.id === media.id);
+};
+
+const isVideo = (media) => {
+    return media.type === 'video';
+};
+
+const playVideo = (media, event) => {
+    event.stopPropagation(); // Prevent selecting the media
+    videoPreview.value = media;
+};
+
+const closeVideoPreview = () => {
+    videoPreview.value = null;
+};
+
+const formatDuration = (seconds) => {
+    if (!seconds) return '';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 
 const removeMedia = (index) => {
@@ -281,7 +351,7 @@ onMounted(() => {
                                     @click="showMediaLibrary = true"
                                     class="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300"
                                 >
-                                    Browse Library
+                                    Pick from Library
                                 </button>
                             </div>
 
@@ -317,7 +387,7 @@ onMounted(() => {
                                             @click="showMediaLibrary = true"
                                             class="px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
                                         >
-                                            Browse Library
+                                            Pick from Library
                                         </button>
                                     </div>
                                 </div>
@@ -330,15 +400,30 @@ onMounted(() => {
                                     class="relative aspect-square rounded-lg overflow-hidden group"
                                 >
                                     <img
-                                        v-if="media.type === 'image'"
                                         :src="media.thumbnail_url || media.url"
                                         class="w-full h-full object-cover"
                                     />
-                                    <video
-                                        v-else
-                                        :src="media.url"
-                                        class="w-full h-full object-cover"
-                                    />
+                                    <!-- Video play button for selected media -->
+                                    <div
+                                        v-if="isVideo(media)"
+                                        class="absolute inset-0 flex items-center justify-center"
+                                    >
+                                        <button
+                                            @click.stop="videoPreview = media"
+                                            class="w-10 h-10 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors"
+                                        >
+                                            <svg class="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                                                <path d="M8 5v14l11-7z" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <!-- Video duration badge -->
+                                    <div
+                                        v-if="isVideo(media) && media.duration"
+                                        class="absolute bottom-1 right-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded"
+                                    >
+                                        {{ formatDuration(media.duration) }}
+                                    </div>
                                     <button
                                         @click="removeMedia(index)"
                                         class="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -356,9 +441,9 @@ onMounted(() => {
                                     class="aspect-square rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex flex-col items-center justify-center cursor-pointer hover:border-primary-400 dark:hover:border-primary-500 transition-colors"
                                 >
                                     <svg class="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                     </svg>
-                                    <span class="text-xs text-gray-500 dark:text-gray-400 mt-1">Add</span>
+                                    <span class="text-xs text-gray-500 dark:text-gray-400 mt-1">Replace</span>
                                     <input type="file" @change="handleFileUpload" class="hidden" accept="image/*,video/*" />
                                 </label>
                             </div>
@@ -489,16 +574,39 @@ onMounted(() => {
                                     <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ instagramDisplayName }}</p>
                                 </div>
                             </div>
-                            <!-- Image -->
-                            <div class="aspect-square bg-gray-100 dark:bg-gray-700">
-                                <img
-                                    v-if="selectedMedia[0]"
+                            <!-- Image/Video -->
+                            <div class="aspect-square bg-gray-100 dark:bg-gray-700 relative">
+                                <!-- Video playing inline -->
+                                <video
+                                    v-if="isPlayingVideo && selectedMedia[0]?.type === 'video'"
                                     :src="selectedMedia[0].url"
+                                    class="w-full h-full object-cover"
+                                    autoplay
+                                    controls
+                                    @click.stop
+                                    @ended="isPlayingVideo = false"
+                                />
+                                <!-- Image/thumbnail -->
+                                <img
+                                    v-else-if="selectedMedia[0]"
+                                    :src="selectedMedia[0].thumbnail_url || selectedMedia[0].url"
                                     class="w-full h-full object-cover"
                                 />
                                 <div v-else class="w-full h-full flex items-center justify-center text-gray-400 dark:text-gray-500">
                                     No image selected
                                 </div>
+                                <!-- Video play button -->
+                                <button
+                                    v-if="selectedMedia[0]?.type === 'video' && !isPlayingVideo"
+                                    @click="isPlayingVideo = true"
+                                    class="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors"
+                                >
+                                    <div class="w-16 h-16 rounded-full bg-black/60 flex items-center justify-center">
+                                        <svg class="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M8 5v14l11-7z" />
+                                        </svg>
+                                    </div>
+                                </button>
                             </div>
                             <!-- Actions -->
                             <div class="p-3">
@@ -542,16 +650,39 @@ onMounted(() => {
                             <div class="px-3 pb-2">
                                 <p class="text-sm whitespace-pre-wrap text-gray-900 dark:text-white">{{ form.caption || 'Your caption here...' }}</p>
                             </div>
-                            <!-- Image -->
-                            <div class="bg-gray-100 dark:bg-gray-700">
-                                <img
-                                    v-if="selectedMedia[0]"
+                            <!-- Image/Video -->
+                            <div class="bg-gray-100 dark:bg-gray-700 relative">
+                                <!-- Video playing inline -->
+                                <video
+                                    v-if="isPlayingVideo && selectedMedia[0]?.type === 'video'"
                                     :src="selectedMedia[0].url"
+                                    class="w-full"
+                                    autoplay
+                                    controls
+                                    @click.stop
+                                    @ended="isPlayingVideo = false"
+                                />
+                                <!-- Image/thumbnail -->
+                                <img
+                                    v-else-if="selectedMedia[0]"
+                                    :src="selectedMedia[0].thumbnail_url || selectedMedia[0].url"
                                     class="w-full"
                                 />
                                 <div v-else class="aspect-video flex items-center justify-center text-gray-400 dark:text-gray-500">
                                     No image selected
                                 </div>
+                                <!-- Video play button -->
+                                <button
+                                    v-if="selectedMedia[0]?.type === 'video' && !isPlayingVideo"
+                                    @click="isPlayingVideo = true"
+                                    class="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors"
+                                >
+                                    <div class="w-16 h-16 rounded-full bg-black/60 flex items-center justify-center">
+                                        <svg class="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M8 5v14l11-7z" />
+                                        </svg>
+                                    </div>
+                                </button>
                             </div>
                             <!-- Actions -->
                             <div class="p-3 border-t border-gray-200 dark:border-gray-700 flex justify-around">
@@ -581,14 +712,37 @@ onMounted(() => {
                             v-else-if="previewPlatform === 'instagram_story'"
                             class="max-w-[280px] mx-auto bg-black rounded-2xl overflow-hidden aspect-[9/16] relative"
                         >
-                            <img
-                                v-if="selectedMedia[0]"
+                            <!-- Video playing inline -->
+                            <video
+                                v-if="isPlayingVideo && selectedMedia[0]?.type === 'video'"
                                 :src="selectedMedia[0].url"
+                                class="w-full h-full object-cover"
+                                autoplay
+                                controls
+                                @click.stop
+                                @ended="isPlayingVideo = false"
+                            />
+                            <!-- Image/thumbnail -->
+                            <img
+                                v-else-if="selectedMedia[0]"
+                                :src="selectedMedia[0].thumbnail_url || selectedMedia[0].url"
                                 class="w-full h-full object-cover"
                             />
                             <div v-else class="w-full h-full flex items-center justify-center text-gray-500">
                                 No image selected
                             </div>
+                            <!-- Video play button -->
+                            <button
+                                v-if="selectedMedia[0]?.type === 'video' && !isPlayingVideo"
+                                @click="isPlayingVideo = true"
+                                class="absolute inset-0 flex items-center justify-center z-10"
+                            >
+                                <div class="w-16 h-16 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors">
+                                    <svg class="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M8 5v14l11-7z" />
+                                    </svg>
+                                </div>
+                            </button>
                             <!-- Top gradient overlay -->
                             <div class="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-black/60 to-transparent pointer-events-none"></div>
                             <!-- Progress bar -->
@@ -639,14 +793,37 @@ onMounted(() => {
                             v-else-if="previewPlatform === 'instagram_reel'"
                             class="max-w-[280px] mx-auto bg-black rounded-2xl overflow-hidden aspect-[9/16] relative"
                         >
-                            <img
-                                v-if="selectedMedia[0]"
+                            <!-- Video playing inline -->
+                            <video
+                                v-if="isPlayingVideo && selectedMedia[0]?.type === 'video'"
                                 :src="selectedMedia[0].url"
+                                class="w-full h-full object-cover"
+                                autoplay
+                                controls
+                                @click.stop
+                                @ended="isPlayingVideo = false"
+                            />
+                            <!-- Image/thumbnail -->
+                            <img
+                                v-else-if="selectedMedia[0]"
+                                :src="selectedMedia[0].thumbnail_url || selectedMedia[0].url"
                                 class="w-full h-full object-cover"
                             />
                             <div v-else class="w-full h-full flex items-center justify-center text-gray-500">
                                 No image selected
                             </div>
+                            <!-- Video play button -->
+                            <button
+                                v-if="selectedMedia[0]?.type === 'video' && !isPlayingVideo"
+                                @click="isPlayingVideo = true"
+                                class="absolute inset-0 flex items-center justify-center z-10"
+                            >
+                                <div class="w-16 h-16 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors">
+                                    <svg class="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M8 5v14l11-7z" />
+                                    </svg>
+                                </div>
+                            </button>
                             <!-- Bottom gradient overlay -->
                             <div class="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/70 to-transparent pointer-events-none"></div>
                             <!-- Right sidebar actions -->
@@ -708,14 +885,37 @@ onMounted(() => {
                             v-else-if="previewPlatform === 'facebook_story'"
                             class="max-w-[280px] mx-auto bg-gray-900 rounded-2xl overflow-hidden aspect-[9/16] relative"
                         >
-                            <img
-                                v-if="selectedMedia[0]"
+                            <!-- Video playing inline -->
+                            <video
+                                v-if="isPlayingVideo && selectedMedia[0]?.type === 'video'"
                                 :src="selectedMedia[0].url"
+                                class="w-full h-full object-cover"
+                                autoplay
+                                controls
+                                @click.stop
+                                @ended="isPlayingVideo = false"
+                            />
+                            <!-- Image/thumbnail -->
+                            <img
+                                v-else-if="selectedMedia[0]"
+                                :src="selectedMedia[0].thumbnail_url || selectedMedia[0].url"
                                 class="w-full h-full object-cover"
                             />
                             <div v-else class="w-full h-full flex items-center justify-center text-gray-500">
                                 No image selected
                             </div>
+                            <!-- Video play button -->
+                            <button
+                                v-if="selectedMedia[0]?.type === 'video' && !isPlayingVideo"
+                                @click="isPlayingVideo = true"
+                                class="absolute inset-0 flex items-center justify-center z-10"
+                            >
+                                <div class="w-16 h-16 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors">
+                                    <svg class="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M8 5v14l11-7z" />
+                                    </svg>
+                                </div>
+                            </button>
                             <!-- Top gradient overlay -->
                             <div class="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-black/60 to-transparent pointer-events-none"></div>
                             <!-- Progress bar -->
@@ -800,16 +1000,91 @@ onMounted(() => {
                 <div class="fixed inset-0 bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-75" @click="showMediaLibrary = false"></div>
 
                 <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden flex flex-col">
-                    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-600 flex justify-between items-center">
-                        <h3 class="text-lg font-medium text-gray-900 dark:text-white">Media Library</h3>
-                        <button @click="showMediaLibrary = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
+                    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-600 flex items-center justify-between gap-4">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <h3 class="text-lg font-medium text-gray-900 dark:text-white shrink-0">Media Library</h3>
+                            <!-- Brand Pill Selector -->
+                            <div class="relative">
+                                <button
+                                    @click="showBrandDropdown = !showBrandDropdown"
+                                    class="flex items-center gap-2 px-3 py-1.5 rounded-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                                >
+                                    <div
+                                        v-if="brandStore.activeBrand?.logo_url"
+                                        class="w-5 h-5 rounded-full overflow-hidden bg-white shrink-0"
+                                    >
+                                        <img :src="brandStore.activeBrand.logo_url" :alt="brandStore.activeBrand.name" class="w-full h-full object-cover" />
+                                    </div>
+                                    <div
+                                        v-else
+                                        class="w-5 h-5 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center shrink-0"
+                                    >
+                                        <span class="text-primary-600 dark:text-primary-400 text-xs font-semibold">
+                                            {{ brandStore.activeBrand?.name?.charAt(0)?.toUpperCase() || '?' }}
+                                        </span>
+                                    </div>
+                                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300 max-w-[100px] truncate">
+                                        {{ brandStore.activeBrand?.name || 'Select' }}
+                                    </span>
+                                    <svg class="w-4 h-4 text-gray-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                    </svg>
+                                </button>
+                                <!-- Brand Dropdown -->
+                                <div
+                                    v-if="showBrandDropdown"
+                                    class="absolute top-full left-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 py-1 z-10"
+                                >
+                                    <button
+                                        v-for="b in brandStore.brands"
+                                        :key="b.id"
+                                        @click="brandStore.setActiveBrand(b); showBrandDropdown = false"
+                                        :class="[
+                                            'flex items-center gap-2 w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700',
+                                            b.id === brandStore.activeBrandId ? 'bg-primary-50 dark:bg-primary-900/20' : ''
+                                        ]"
+                                    >
+                                        <div
+                                            v-if="b.logo_url"
+                                            class="w-6 h-6 rounded-full overflow-hidden bg-white shrink-0"
+                                        >
+                                            <img :src="b.logo_url" :alt="b.name" class="w-full h-full object-cover" />
+                                        </div>
+                                        <div
+                                            v-else
+                                            class="w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center shrink-0"
+                                        >
+                                            <span class="text-primary-600 dark:text-primary-400 text-xs font-semibold">
+                                                {{ b.name?.charAt(0)?.toUpperCase() }}
+                                            </span>
+                                        </div>
+                                        <span class="truncate text-gray-700 dark:text-gray-300">{{ b.name }}</span>
+                                        <svg
+                                            v-if="b.id === brandStore.activeBrandId"
+                                            class="w-4 h-4 text-primary-600 dark:text-primary-400 ml-auto shrink-0"
+                                            fill="currentColor"
+                                            viewBox="0 0 20 20"
+                                        >
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 shrink-0">
+                            <label class="cursor-pointer px-3 py-1.5 bg-primary-600 dark:bg-primary-500 text-white text-sm rounded-md hover:bg-primary-700 dark:hover:bg-primary-600">
+                                Upload New
+                                <input type="file" @change="handleFileUpload" class="hidden" accept="image/*,video/*" />
+                            </label>
+                            <button @click="showMediaLibrary = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
-                    <div class="flex-1 overflow-y-auto p-6">
+                    <div class="flex-1 overflow-y-auto p-6" @scroll="handleMediaScroll">
                         <div v-if="loadingMedia" class="text-center py-8 text-gray-500 dark:text-gray-400">
                             Loading media...
                         </div>
@@ -819,36 +1094,61 @@ onMounted(() => {
                                 Go to Media Library to upload
                             </RouterLink>
                         </div>
-                        <div v-else class="grid grid-cols-4 gap-4">
-                            <div
-                                v-for="media in brandMedia"
-                                :key="media.id"
-                                @click="toggleMedia(media)"
-                                :class="[
-                                    'relative aspect-square rounded-lg overflow-hidden cursor-pointer border-2 transition-all',
-                                    isMediaSelected(media) ? 'border-primary-500 dark:border-primary-400 ring-2 ring-primary-200 dark:ring-primary-900/30' : 'border-transparent hover:border-gray-300 dark:hover:border-gray-600'
-                                ]"
-                            >
-                                <img
-                                    v-if="media.type === 'image'"
-                                    :src="media.thumbnail_url || media.url"
-                                    class="w-full h-full object-cover"
-                                />
-                                <video
-                                    v-else
-                                    :src="media.url"
-                                    class="w-full h-full object-cover"
-                                />
+                        <template v-else>
+                            <div class="grid grid-cols-4 gap-4">
                                 <div
-                                    v-if="isMediaSelected(media)"
-                                    class="absolute inset-0 bg-primary-500 bg-opacity-20 dark:bg-primary-900/30 flex items-center justify-center"
+                                    v-for="media in brandMedia"
+                                    :key="media.id"
+                                    @click="toggleMedia(media)"
+                                    :class="[
+                                        'relative aspect-square rounded-lg overflow-hidden cursor-pointer border-2 transition-all group',
+                                        isMediaSelected(media) ? 'border-primary-500 dark:border-primary-400 ring-2 ring-primary-200 dark:ring-primary-900/30' : 'border-transparent hover:border-gray-300 dark:hover:border-gray-600'
+                                    ]"
                                 >
-                                    <svg class="w-8 h-8 text-primary-600 dark:text-primary-400" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                                    </svg>
+                                    <img
+                                        :src="media.thumbnail_url || media.url"
+                                        class="w-full h-full object-cover"
+                                    />
+                                    <!-- Video play button overlay -->
+                                    <div
+                                        v-if="isVideo(media)"
+                                        class="absolute inset-0 flex items-center justify-center"
+                                    >
+                                        <button
+                                            @click="playVideo(media, $event)"
+                                            class="w-12 h-12 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors group-hover:scale-110"
+                                        >
+                                            <svg class="w-6 h-6 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                                                <path d="M8 5v14l11-7z" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <!-- Video duration badge -->
+                                    <div
+                                        v-if="isVideo(media) && media.duration"
+                                        class="absolute bottom-1 right-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded"
+                                    >
+                                        {{ formatDuration(media.duration) }}
+                                    </div>
+                                    <!-- Selected overlay -->
+                                    <div
+                                        v-if="isMediaSelected(media)"
+                                        class="absolute inset-0 bg-primary-500 bg-opacity-20 dark:bg-primary-900/30 flex items-center justify-center pointer-events-none"
+                                    >
+                                        <svg class="w-8 h-8 text-primary-600 dark:text-primary-400" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                        </svg>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                            <!-- Loading more indicator -->
+                            <div v-if="loadingMoreMedia" class="text-center py-4 text-gray-500 dark:text-gray-400">
+                                <svg class="animate-spin h-5 w-5 mx-auto text-primary-500" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            </div>
+                        </template>
                     </div>
 
                     <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-600 flex justify-between items-center">
@@ -858,6 +1158,59 @@ onMounted(() => {
                             class="px-4 py-2 bg-primary-600 dark:bg-primary-500 text-white rounded-md hover:bg-primary-700 dark:hover:bg-primary-600"
                         >
                             Done
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Video Preview Modal -->
+        <div v-if="videoPreview" class="fixed inset-0 z-[60] overflow-y-auto">
+            <div class="flex items-center justify-center min-h-screen px-4">
+                <div class="fixed inset-0 bg-black bg-opacity-90" @click="closeVideoPreview"></div>
+
+                <div class="relative max-w-4xl w-full">
+                    <!-- Close button -->
+                    <button
+                        @click="closeVideoPreview"
+                        class="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors"
+                    >
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+
+                    <!-- Video player -->
+                    <video
+                        :src="videoPreview.url"
+                        controls
+                        autoplay
+                        class="w-full rounded-lg shadow-2xl"
+                    >
+                        Your browser does not support the video tag.
+                    </video>
+
+                    <!-- Video info and select button -->
+                    <div class="mt-4 flex items-center justify-between">
+                        <div class="text-white">
+                            <p class="font-medium">{{ videoPreview.original_filename }}</p>
+                            <p class="text-sm text-gray-400">
+                                {{ formatDuration(videoPreview.duration) }}
+                                <span v-if="videoPreview.width && videoPreview.height">
+                                    &bull; {{ videoPreview.width }}x{{ videoPreview.height }}
+                                </span>
+                            </p>
+                        </div>
+                        <button
+                            @click="toggleMedia(videoPreview); closeVideoPreview()"
+                            :class="[
+                                'px-4 py-2 rounded-md font-medium transition-colors',
+                                isMediaSelected(videoPreview)
+                                    ? 'bg-red-600 hover:bg-red-700 text-white'
+                                    : 'bg-primary-600 hover:bg-primary-700 text-white'
+                            ]"
+                        >
+                            {{ isMediaSelected(videoPreview) ? 'Deselect' : 'Select Video' }}
                         </button>
                     </div>
                 </div>
