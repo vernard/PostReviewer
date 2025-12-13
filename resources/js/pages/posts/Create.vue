@@ -310,7 +310,7 @@ onMounted(() => {
                                     <div class="mt-3 flex items-center justify-center gap-3">
                                         <label class="cursor-pointer px-3 py-1.5 bg-primary-600 dark:bg-primary-500 text-white text-sm rounded-md hover:bg-primary-700 dark:hover:bg-primary-600">
                                             Upload
-                                            <input type="file" @change="handleFileUpload" class="hidden" multiple accept="image/*,video/*" />
+                                            <input type="file" @change="handleFileUpload" class="hidden" accept="image/*,video/*" />
                                         </label>
                                         <span class="text-gray-400 dark:text-gray-500">or</span>
                                         <button
@@ -359,7 +359,7 @@ onMounted(() => {
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                                     </svg>
                                     <span class="text-xs text-gray-500 dark:text-gray-400 mt-1">Add</span>
-                                    <input type="file" @change="handleFileUpload" class="hidden" multiple accept="image/*,video/*" />
+                                    <input type="file" @change="handleFileUpload" class="hidden" accept="image/*,video/*" />
                                 </label>
                             </div>
                         </div>
