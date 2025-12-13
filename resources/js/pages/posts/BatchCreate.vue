@@ -382,11 +382,9 @@ onMounted(() => {
                                 ]"
                             >
                                 <img
-                                    v-if="media.type === 'image'"
                                     :src="media.thumbnail_url || media.url"
                                     class="w-full h-full object-cover"
                                 />
-                                <video v-else :src="media.url" class="w-full h-full object-cover" />
                                 <div
                                     v-if="isMediaInBatch(media)"
                                     class="absolute inset-0 bg-primary-500 bg-opacity-20 dark:bg-primary-900/30 flex items-center justify-center"
@@ -445,11 +443,9 @@ onMounted(() => {
                                     ]"
                                 >
                                     <img
-                                        v-if="post.media.type === 'image'"
                                         :src="post.media.thumbnail_url || post.media.url"
                                         class="w-full h-full object-cover"
                                     />
-                                    <video v-else :src="post.media.url" class="w-full h-full object-cover" />
                                     <!-- Remove button -->
                                     <button
                                         @click.stop="removePost(index)"
@@ -500,11 +496,9 @@ onMounted(() => {
                                             <td class="py-2 px-2">
                                                 <div class="w-12 h-12 rounded overflow-hidden">
                                                     <img
-                                                        v-if="post.media.type === 'image'"
                                                         :src="post.media.thumbnail_url || post.media.url"
                                                         class="w-full h-full object-cover"
                                                     />
-                                                    <video v-else :src="post.media.url" class="w-full h-full object-cover" />
                                                 </div>
                                             </td>
                                             <td class="py-2 px-2">

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\ProcessVideo;
 use App\Models\Brand;
 use App\Models\Media;
 use Illuminate\Http\JsonResponse;
@@ -109,8 +110,7 @@ class MediaController extends Controller
         if ($type === 'image') {
             $this->processImage($media);
         } else {
-            // TODO: Dispatch video processing job
-            // ProcessVideo::dispatch($media);
+            ProcessVideo::dispatch($media);
         }
 
         return response()->json([

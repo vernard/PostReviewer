@@ -293,13 +293,7 @@ onMounted(async () => {
                                         class="relative aspect-square rounded-lg overflow-hidden group"
                                     >
                                         <img
-                                            v-if="media.type === 'image'"
                                             :src="media.thumbnail_url || media.url"
-                                            class="w-full h-full object-cover"
-                                        />
-                                        <video
-                                            v-else
-                                            :src="media.url"
                                             class="w-full h-full object-cover"
                                         />
                                         <button
@@ -484,13 +478,7 @@ onMounted(async () => {
                                 ]"
                             >
                                 <img
-                                    v-if="media.type === 'image'"
                                     :src="media.thumbnail_url || media.url"
-                                    class="w-full h-full object-cover"
-                                />
-                                <video
-                                    v-else
-                                    :src="media.url"
                                     class="w-full h-full object-cover"
                                 />
                                 <div

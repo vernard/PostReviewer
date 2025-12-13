@@ -382,13 +382,7 @@ onMounted(fetchPost);
                                         class="aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700"
                                     >
                                         <img
-                                            v-if="media.type === 'image'"
                                             :src="media.thumbnail_url || media.url"
-                                            class="w-full h-full object-cover"
-                                        />
-                                        <video
-                                            v-else
-                                            :src="media.url"
                                             class="w-full h-full object-cover"
                                         />
                                     </div>

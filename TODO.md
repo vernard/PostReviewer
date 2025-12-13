@@ -11,6 +11,8 @@
 - [ ] When an image doesn't fit the aspect ratio, it shows a black bar. But in reality, Meta is using some sort of magic to identify what color is best for that. Maybe check the color at the edges thn average that?
 
 ## In Progress
+
+## Paused
 - [ ] Make it easy to create multiple posts.
     - Say, on "Posts" page, they should be able to drop in multiple files.
     - Have multiple posts lined up like a gallery
@@ -25,11 +27,11 @@
 - [ ] Review AI safety settings - audit .claude/settings.local.json permissions
 
 ### Features (Incomplete)
-- [ ] Implement video processing job dispatch (MediaController:112-113)
 - [ ] Implement rate limiting for API endpoints
 - [ ] Set up email notifications (invitations, approval workflow)
 
 ## Done
+- [x] Implement video processing job dispatch (ProcessVideo job extracts dimensions, duration, generates thumbnails via ffmpeg)
 - [x] Bug tracking setup (Sentry) for both Laravel backend and Vue frontend - just add SENTRY_LARAVEL_DSN and VITE_SENTRY_DSN to .env
 - [x] Use the brand files (in ./brand/) on the website - green primary colors, Plus Jakarta Sans font, favicon, logo images, homepage copy
 - [x] Investigate PHP-FPM child SIGKILL - Worker killed after 13s (was timeout, not memory - fixed with PHP_FPM_PROCESS_CONTROL_TIMEOUT)
