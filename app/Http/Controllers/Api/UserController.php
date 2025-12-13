@@ -94,31 +94,31 @@ class UserController extends Controller
         ], 201);
     }
 
-    public function update(Request $request, User $targetUser): JsonResponse
+    public function update(Request $request, User $user): JsonResponse
     {
-        $user = $request->user();
+        $authUser = $request->user();
 
-        if (!$user->isManager()) {
+        if (!$authUser->isManager()) {
             return response()->json([
                 'message' => 'Only managers can update users.',
             ], 403);
         }
 
-        if ($targetUser->agency_id !== $user->agency_id) {
+        if ($user->agency_id !== $authUser->agency_id) {
             return response()->json([
                 'message' => 'User not found.',
             ], 404);
         }
 
         // Can't change own role
-        if ($targetUser->id === $user->id && $request->has('role')) {
+        if ($user->id === $authUser->id && $request->has('role')) {
             return response()->json([
                 'message' => 'You cannot change your own role.',
             ], 422);
         }
 
         // Only admins can promote to admin
-        if ($request->role === 'admin' && !$user->isAdmin()) {
+        if ($request->role === 'admin' && !$authUser->isAdmin()) {
             return response()->json([
                 'message' => 'Only admins can promote users to admin.',
             ], 403);
@@ -129,36 +129,36 @@ class UserController extends Controller
             'role' => ['sometimes', 'in:admin,manager,creator,reviewer'],
         ]);
 
-        $targetUser->update($request->only(['name', 'role']));
+        $user->update($request->only(['name', 'role']));
 
         return response()->json([
-            'user' => $targetUser->fresh('brands'),
+            'user' => $user->fresh('brands'),
         ]);
     }
 
-    public function destroy(Request $request, User $targetUser): JsonResponse
+    public function destroy(Request $request, User $user): JsonResponse
     {
-        $user = $request->user();
+        $authUser = $request->user();
 
-        if (!$user->isAdmin()) {
+        if (!$authUser->isAdmin()) {
             return response()->json([
                 'message' => 'Only admins can remove users.',
             ], 403);
         }
 
-        if ($targetUser->agency_id !== $user->agency_id) {
+        if ($user->agency_id !== $authUser->agency_id) {
             return response()->json([
                 'message' => 'User not found.',
             ], 404);
         }
 
-        if ($targetUser->id === $user->id) {
+        if ($user->id === $authUser->id) {
             return response()->json([
                 'message' => 'You cannot remove yourself.',
             ], 422);
         }
 
-        $targetUser->delete();
+        $user->delete();
 
         return response()->json([
             'message' => 'User removed successfully.',
