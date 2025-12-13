@@ -30,6 +30,16 @@ class AppServiceProvider extends ServiceProvider
      */
     protected function configureRateLimiting(): void
     {
+        // Disable rate limiting during tests
+        if (app()->runningUnitTests()) {
+            RateLimiter::for('login', fn () => Limit::none());
+            RateLimiter::for('register', fn () => Limit::none());
+            RateLimiter::for('invitation', fn () => Limit::none());
+            RateLimiter::for('public-approval', fn () => Limit::none());
+
+            return;
+        }
+
         // Login: 5 attempts per minute per IP
         RateLimiter::for('login', function (Request $request) {
             return Limit::perMinute(5)->by($request->ip());

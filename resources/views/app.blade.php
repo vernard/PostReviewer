@@ -40,25 +40,25 @@
     <!-- JSON-LD Structured Data -->
     <script type="application/ld+json">
     {
-        "@context": "https://schema.org",
-        "@type": "SoftwareApplication",
+        "@@context": "https://schema.org",
+        "@@type": "SoftwareApplication",
         "name": "Post Reviewer",
         "description": "Streamline your social media workflow. Create post mockups, share with clients, and get approvals faster. No more back-and-forth emails or confusing spreadsheets.",
         "url": "https://postreviewer.com",
         "applicationCategory": "BusinessApplication",
         "operatingSystem": "Web",
         "offers": {
-            "@type": "Offer",
+            "@@type": "Offer",
             "price": "0",
             "priceCurrency": "USD"
         },
         "aggregateRating": {
-            "@type": "AggregateRating",
+            "@@type": "AggregateRating",
             "ratingValue": "5",
             "ratingCount": "1"
         },
         "author": {
-            "@type": "Organization",
+            "@@type": "Organization",
             "name": "Post Reviewer",
             "url": "https://postreviewer.com",
             "logo": "https://postreviewer.com/images/post-reviewer-icon-512.png",
