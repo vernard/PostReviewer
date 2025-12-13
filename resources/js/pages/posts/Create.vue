@@ -575,12 +575,12 @@ onMounted(() => {
                                 </div>
                             </div>
                             <!-- Image/Video -->
-                            <div class="aspect-square bg-gray-100 dark:bg-gray-700 relative">
+                            <div class="aspect-square bg-black relative">
                                 <!-- Video playing inline -->
                                 <video
                                     v-if="isPlayingVideo && selectedMedia[0]?.type === 'video'"
                                     :src="selectedMedia[0].url"
-                                    class="w-full h-full object-cover"
+                                    class="w-full h-full object-contain"
                                     autoplay
                                     controls
                                     @click.stop
@@ -651,12 +651,12 @@ onMounted(() => {
                                 <p class="text-sm whitespace-pre-wrap text-gray-900 dark:text-white">{{ form.caption || 'Your caption here...' }}</p>
                             </div>
                             <!-- Image/Video -->
-                            <div class="bg-gray-100 dark:bg-gray-700 relative">
+                            <div class="bg-black relative">
                                 <!-- Video playing inline -->
                                 <video
                                     v-if="isPlayingVideo && selectedMedia[0]?.type === 'video'"
                                     :src="selectedMedia[0].url"
-                                    class="w-full"
+                                    class="w-full object-contain"
                                     autoplay
                                     controls
                                     @click.stop
