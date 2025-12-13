@@ -64,11 +64,11 @@ onMounted(fetchDashboardData);
                 <div v-if="loading" class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
                     <div v-for="i in 4" :key="i" class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg animate-pulse">
                         <div class="p-5">
-                            <div class="flex items-center">
+                            <div class="flex items-center gap-5">
                                 <div class="flex-shrink-0">
                                     <div class="h-6 w-6 bg-gray-200 dark:bg-gray-700 rounded"></div>
                                 </div>
-                                <div class="ml-5 w-0 flex-1">
+                                <div class="w-0 flex-1">
                                     <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24 mb-2"></div>
                                     <div class="h-6 bg-gray-200 dark:bg-gray-700 rounded w-12"></div>
                                 </div>
@@ -81,13 +81,13 @@ onMounted(fetchDashboardData);
                 <div v-else class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
                     <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
                         <div class="p-5">
-                            <div class="flex items-center">
+                            <div class="flex items-center gap-5">
                                 <div class="flex-shrink-0">
                                     <svg class="h-6 w-6 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
                                 </div>
-                                <div class="ml-5 w-0 flex-1">
+                                <div class="w-0 flex-1">
                                     <dl>
                                         <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Posts</dt>
                                         <dd class="text-lg font-semibold text-gray-900 dark:text-white">{{ stats.total_posts }}</dd>
@@ -104,13 +104,13 @@ onMounted(fetchDashboardData);
 
                     <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
                         <div class="p-5">
-                            <div class="flex items-center">
+                            <div class="flex items-center gap-5">
                                 <div class="flex-shrink-0">
                                     <svg class="h-6 w-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                 </div>
-                                <div class="ml-5 w-0 flex-1">
+                                <div class="w-0 flex-1">
                                     <dl>
                                         <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Pending Approval</dt>
                                         <dd class="text-lg font-semibold text-gray-900 dark:text-white">{{ stats.pending_approval }}</dd>
@@ -127,13 +127,13 @@ onMounted(fetchDashboardData);
 
                     <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
                         <div class="p-5">
-                            <div class="flex items-center">
+                            <div class="flex items-center gap-5">
                                 <div class="flex-shrink-0">
                                     <svg class="h-6 w-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                 </div>
-                                <div class="ml-5 w-0 flex-1">
+                                <div class="w-0 flex-1">
                                     <dl>
                                         <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Approved</dt>
                                         <dd class="text-lg font-semibold text-gray-900 dark:text-white">{{ stats.approved }}</dd>
@@ -150,13 +150,13 @@ onMounted(fetchDashboardData);
 
                     <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
                         <div class="p-5">
-                            <div class="flex items-center">
+                            <div class="flex items-center gap-5">
                                 <div class="flex-shrink-0">
                                     <svg class="h-6 w-6 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                                     </svg>
                                 </div>
-                                <div class="ml-5 w-0 flex-1">
+                                <div class="w-0 flex-1">
                                     <dl>
                                         <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Brands</dt>
                                         <dd class="text-lg font-semibold text-gray-900 dark:text-white">{{ stats.brands_count }}</dd>
@@ -178,7 +178,7 @@ onMounted(fetchDashboardData);
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         <RouterLink
                             to="/posts/create"
-                            class="relative rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-primary-400 dark:hover:border-primary-500 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary-500 dark:focus-within:ring-offset-gray-900"
+                            class="relative rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-6 py-5 shadow-sm flex items-center gap-3 hover:border-primary-400 dark:hover:border-primary-500 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary-500 dark:focus-within:ring-offset-gray-900"
                         >
                             <div class="flex-shrink-0">
                                 <div class="h-10 w-10 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
@@ -196,7 +196,7 @@ onMounted(fetchDashboardData);
 
                         <RouterLink
                             to="/media"
-                            class="relative rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-primary-400 dark:hover:border-primary-500 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary-500 dark:focus-within:ring-offset-gray-900"
+                            class="relative rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-6 py-5 shadow-sm flex items-center gap-3 hover:border-primary-400 dark:hover:border-primary-500 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary-500 dark:focus-within:ring-offset-gray-900"
                         >
                             <div class="flex-shrink-0">
                                 <div class="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
@@ -214,7 +214,7 @@ onMounted(fetchDashboardData);
 
                         <RouterLink
                             to="/brands"
-                            class="relative rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-primary-400 dark:hover:border-primary-500 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary-500 dark:focus-within:ring-offset-gray-900"
+                            class="relative rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-6 py-5 shadow-sm flex items-center gap-3 hover:border-primary-400 dark:hover:border-primary-500 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary-500 dark:focus-within:ring-offset-gray-900"
                         >
                             <div class="flex-shrink-0">
                                 <div class="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
@@ -256,7 +256,7 @@ onMounted(fetchDashboardData);
                                 <RouterLink :to="`/posts/${post.id}`" class="block hover:bg-gray-50 dark:hover:bg-gray-700">
                                     <div class="px-4 py-4 sm:px-6">
                                         <div class="flex items-center justify-between">
-                                            <div class="flex items-center min-w-0">
+                                            <div class="flex items-center min-w-0 gap-4">
                                                 <div
                                                     v-if="post.brand?.logo"
                                                     class="h-10 w-10 rounded-full overflow-hidden flex-shrink-0"
@@ -271,7 +271,7 @@ onMounted(fetchDashboardData);
                                                         {{ post.brand?.name?.charAt(0)?.toUpperCase() || 'P' }}
                                                     </span>
                                                 </div>
-                                                <div class="ml-4 truncate">
+                                                <div class="truncate">
                                                     <p class="text-sm font-medium text-primary-600 dark:text-primary-400 truncate">{{ post.title }}</p>
                                                     <p class="text-sm text-gray-500 dark:text-gray-400">{{ post.brand?.name }}</p>
                                                 </div>

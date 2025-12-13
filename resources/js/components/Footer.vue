@@ -15,7 +15,7 @@ const currentYear = new Date().getFullYear();
                         Create stunning social media mockups and streamline your approval workflow.
                         Perfect for agencies, brands, and marketing teams.
                     </p>
-                    <div class="flex space-x-4">
+                    <div class="flex gap-4">
                         <!-- Twitter/X -->
                         <a href="#" class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
                             <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
@@ -40,7 +40,7 @@ const currentYear = new Date().getFullYear();
                 <!-- Product Links -->
                 <div>
                     <h4 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4">Product</h4>
-                    <ul class="space-y-2">
+                    <ul class="flex flex-col gap-2">
                         <li>
                             <a href="/#features" class="hover:text-gray-900 dark:hover:text-white transition-colors">Features</a>
                         </li>
@@ -59,7 +59,7 @@ const currentYear = new Date().getFullYear();
                 <!-- Legal Links -->
                 <div>
                     <h4 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4">Legal</h4>
-                    <ul class="space-y-2">
+                    <ul class="flex flex-col gap-2">
                         <li>
                             <RouterLink to="/privacy" class="hover:text-gray-900 dark:hover:text-white transition-colors">Privacy Policy</RouterLink>
                         </li>
