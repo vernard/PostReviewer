@@ -1,2 +1,4 @@
 - When making new files or folders, make sure it's owned by 33:33 or www-data:www-data. And set the proper permissions
 - Don't use playwright MCP if you can check via curl. Only use playwright when checking things you can't check via curl because it takes up a lot of tokens.
+- Always consider UX impact before implementing features. Don't just add functionality - think about how it integrates into the user's workflow, whether it adds unnecessary complexity, and if it makes the common case harder.
+- Use `gap` on flex/grid containers for spacing between children instead of margins on individual items. Gap is cleaner, works with reordering (e.g., responsive `order-*` classes), and avoids edge cases with first/last child margins.
