@@ -1,9 +1,18 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch, nextTick } from 'vue';
 import { useRouter, useRoute, RouterLink } from 'vue-router';
+import html2canvas from 'html2canvas-pro';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { collectionApi, mediaApi } from '@/services/api';
 import { useBrandStore } from '@/stores/brand';
+import {
+    InstagramFeedPreview,
+    FacebookFeedPreview,
+    InstagramStoryPreview,
+    InstagramReelPreview,
+    FacebookStoryPreview,
+    FacebookReelPreview
+} from '@/components/mockups';
 
 const router = useRouter();
 const route = useRoute();
@@ -12,7 +21,27 @@ const brandStore = useBrandStore();
 const brandMedia = ref([]);
 const loading = ref(false);
 const loadingMedia = ref(false);
+const uploading = ref(false);
+const uploadProgress = ref(0);
 const error = ref('');
+
+// Mockup export
+const mockupRef = ref(null);
+const exporting = ref(false);
+
+// Drag and drop state
+const isDragging = ref(false);
+
+// Import from spreadsheet
+const showImportModal = ref(false);
+const importStep = ref(1); // 1 = paste, 2 = preview
+const importText = ref('');
+const parsedImportData = ref([]);
+
+// Bulk paste for titles/captions
+const showBulkPasteModal = ref(false);
+const bulkPasteMode = ref('captions'); // 'titles' or 'captions'
+const bulkPasteText = ref('');
 
 // Use the active brand from the global store
 const brand = computed(() => brandStore.activeBrand);
@@ -25,13 +54,16 @@ const posts = ref([]);
 const selectedPostIndex = ref(0);
 
 // View mode: 'table' or 'card'
-const viewMode = ref('card');
+const viewMode = ref('table');
+
+// Platform editor dropdown (for table view)
+const editingPlatformsIndex = ref(null);
 
 // Media library modal
 const showMediaLibrary = ref(false);
 
-// Default platforms for new posts
-const defaultPlatforms = ref([]);
+// Default platforms for new posts (pre-select FB + IG Feed)
+const defaultPlatforms = ref(['facebook_feed', 'instagram_feed']);
 
 // Created collection (after save)
 const createdCollection = ref(null);
@@ -54,10 +86,23 @@ const canSubmit = computed(() => {
     );
 });
 
-const previewPlatform = computed(() => {
-    if (!selectedPost.value) return '';
-    return selectedPost.value.platforms[0] || '';
-});
+const previewPlatform = ref('');
+
+// Update preview platform when selected post or its platforms change
+watch(
+    () => selectedPost.value?.platforms,
+    (platforms) => {
+        if (platforms && platforms.length > 0) {
+            // Keep current platform if valid for this post, otherwise use first
+            if (!previewPlatform.value || !platforms.includes(previewPlatform.value)) {
+                previewPlatform.value = platforms[0];
+            }
+        } else {
+            previewPlatform.value = '';
+        }
+    },
+    { immediate: true, deep: true }
+);
 
 const truncatedCaption = computed(() => {
     if (!selectedPost.value?.caption) return '';
@@ -93,6 +138,185 @@ const fetchBrandMedia = async () => {
         loadingMedia.value = false;
     }
 };
+
+// Direct upload handlers
+const handleDragOver = (e) => {
+    e.preventDefault();
+    isDragging.value = true;
+};
+
+const handleDragLeave = (e) => {
+    e.preventDefault();
+    isDragging.value = false;
+};
+
+const handleDrop = async (e) => {
+    e.preventDefault();
+    isDragging.value = false;
+    const files = Array.from(e.dataTransfer.files);
+    await uploadFiles(files);
+};
+
+const handleFileSelect = async (e) => {
+    const files = Array.from(e.target.files);
+    await uploadFiles(files);
+    e.target.value = ''; // Reset input
+};
+
+const uploadFiles = async (files) => {
+    if (!brandStore.activeBrandId || files.length === 0) return;
+
+    const imageFiles = files.filter(f => f.type.startsWith('image/') || f.type.startsWith('video/'));
+    if (imageFiles.length === 0) {
+        error.value = 'Please select image or video files';
+        return;
+    }
+
+    try {
+        uploading.value = true;
+        uploadProgress.value = 0;
+        error.value = '';
+
+        for (let i = 0; i < imageFiles.length; i++) {
+            const file = imageFiles[i];
+            const response = await mediaApi.upload(brandStore.activeBrandId, file);
+            const newMedia = response.data.media || response.data;
+
+            // Add to brand media list
+            brandMedia.value.unshift(newMedia);
+
+            // Auto-add as post
+            addPostFromMedia(newMedia);
+
+            uploadProgress.value = Math.round(((i + 1) / imageFiles.length) * 100);
+        }
+    } catch (err) {
+        error.value = err.response?.data?.message || 'Failed to upload files';
+        console.error('Upload error:', err);
+    } finally {
+        uploading.value = false;
+        uploadProgress.value = 0;
+    }
+};
+
+// Import from spreadsheet functions
+const parseSpreadsheetData = () => {
+    if (!importText.value.trim()) return;
+
+    const lines = importText.value.trim().split('\n');
+    parsedImportData.value = lines.map(line => {
+        const parts = line.split('\t');
+        const filename = parts[0]?.trim() || '';
+        const title = parts[1]?.trim() || '';
+        const caption = parts[2]?.trim() || '';
+        const platformsStr = parts[3]?.trim() || '';
+
+        // Parse platforms (comma-separated) or use defaults
+        let platforms = [];
+        if (platformsStr) {
+            platforms = platformsStr.split(',').map(p => p.trim()).filter(Boolean);
+        }
+
+        // Find matching post by filename
+        const matchedPost = findMatchingPost(filename);
+
+        return {
+            filename,
+            title,
+            caption,
+            platforms,
+            matchedPost,
+            matchedFilename: matchedPost?.media?.original_filename || matchedPost?.media?.filename || null
+        };
+    });
+
+    importStep.value = 2;
+};
+
+const findMatchingPost = (filename) => {
+    if (!filename) return null;
+
+    // Normalize: lowercase, remove extension
+    const normalized = filename.toLowerCase().replace(/\.[^.]+$/, '');
+
+    return posts.value.find(post => {
+        const mediaName = (post.media.original_filename || post.media.filename || '')
+            .toLowerCase()
+            .replace(/\.[^.]+$/, '');
+        return mediaName === normalized ||
+            mediaName.includes(normalized) ||
+            normalized.includes(mediaName);
+    });
+};
+
+const applyImportData = () => {
+    parsedImportData.value.forEach(row => {
+        if (row.matchedPost) {
+            row.matchedPost.title = row.title;
+            row.matchedPost.caption = row.caption;
+            // Use row platforms if specified, otherwise keep existing
+            if (row.platforms.length > 0) {
+                row.matchedPost.platforms = row.platforms;
+            }
+        }
+    });
+
+    // Reset modal
+    showImportModal.value = false;
+    importStep.value = 1;
+    importText.value = '';
+    parsedImportData.value = [];
+};
+
+const resetImportModal = () => {
+    showImportModal.value = false;
+    importStep.value = 1;
+    importText.value = '';
+    parsedImportData.value = [];
+};
+
+// Bulk paste functions
+const openBulkPaste = (mode) => {
+    bulkPasteMode.value = mode;
+    bulkPasteText.value = '';
+    showBulkPasteModal.value = true;
+};
+
+const applyBulkPaste = () => {
+    if (!bulkPasteText.value.trim()) return;
+
+    // Titles use newlines, captions use --- delimiter
+    const values = bulkPasteMode.value === 'titles'
+        ? bulkPasteText.value.split('\n').map(v => v.trim()).filter(v => v)
+        : bulkPasteText.value.split('---').map(v => v.trim()).filter(v => v);
+
+    const field = bulkPasteMode.value === 'titles' ? 'title' : 'caption';
+
+    // Apply to posts in order
+    values.forEach((value, index) => {
+        if (posts.value[index]) {
+            posts.value[index][field] = value;
+        }
+    });
+
+    showBulkPasteModal.value = false;
+    bulkPasteText.value = '';
+};
+
+const bulkPasteCount = computed(() => {
+    if (!bulkPasteText.value.trim()) return 0;
+    if (bulkPasteMode.value === 'titles') {
+        return bulkPasteText.value.split('\n').filter(v => v.trim()).length;
+    }
+    return bulkPasteText.value.split('---').filter(v => v.trim()).length;
+});
+
+// Auto-apply default platforms when changed
+watch(defaultPlatforms, (newPlatforms) => {
+    posts.value.forEach(post => {
+        post.platforms = [...newPlatforms];
+    });
+}, { deep: true });
 
 const addPostFromMedia = (media) => {
     posts.value.push({
@@ -241,6 +465,108 @@ const goToCollection = () => {
     }
 };
 
+// Convert an image URL to a data URL to avoid CORS issues with html2canvas
+const imageToDataUrl = async (url) => {
+    if (!url) return null;
+    try {
+        // Check if this is a media URL that we can proxy through the API
+        const mediaMatch = url.match(/\/storage\/brands\/\d+\/media\/([^/]+)/);
+        if (mediaMatch && selectedPost.value?.media) {
+            // Find the media by matching the filename
+            const filename = mediaMatch[1];
+            if (selectedPost.value.media.url.includes(filename)) {
+                // Use the stream API endpoint to fetch via the authenticated API
+                const response = await axios.get(`/api/media/${selectedPost.value.media.id}/stream`, {
+                    responseType: 'blob'
+                });
+                return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.readAsDataURL(response.data);
+                });
+            }
+        }
+        // Fallback: try direct fetch
+        const response = await fetch(url);
+        const blob = await response.blob();
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(blob);
+        });
+    } catch (err) {
+        console.warn('Failed to convert image to data URL:', url, err);
+        return null;
+    }
+};
+
+// Create a safe filename from text
+const slugify = (text) => {
+    return text
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .trim()
+        .substring(0, 50);
+};
+
+const exportAsJpeg = async () => {
+    if (!mockupRef.value || exporting.value) return;
+
+    try {
+        exporting.value = true;
+
+        // Wait for Vue to update DOM and images to load
+        await nextTick();
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Convert all images in the mockup to data URLs to avoid CORS issues
+        const images = mockupRef.value.querySelectorAll('img');
+        const originalSrcs = new Map();
+
+        await Promise.all(Array.from(images).map(async (img) => {
+            const originalSrc = img.src;
+            if (originalSrc && !originalSrc.startsWith('data:')) {
+                originalSrcs.set(img, originalSrc);
+                const dataUrl = await imageToDataUrl(originalSrc);
+                if (dataUrl) {
+                    img.src = dataUrl;
+                }
+            }
+        }));
+
+        // Wait for images to update in the DOM
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        const canvas = await html2canvas(mockupRef.value, {
+            useCORS: true,
+            allowTaint: true,
+            backgroundColor: null,
+            scale: 2,
+            logging: false,
+        });
+
+        // Restore original image sources
+        originalSrcs.forEach((src, img) => {
+            img.src = src;
+        });
+
+        const link = document.createElement('a');
+        const platformName = previewPlatform.value.replace(/_/g, '-');
+        const postTitle = selectedPost.value?.title ? slugify(selectedPost.value.title) : 'draft';
+        const brandName = brand.value?.name ? slugify(brand.value.name) : 'brand';
+        link.download = `${brandName}-${postTitle}-${platformName}.jpg`;
+        link.href = canvas.toDataURL('image/jpeg', 0.95);
+        link.click();
+    } catch (err) {
+        console.error('Export failed:', err);
+        error.value = 'Failed to export mockup';
+    } finally {
+        exporting.value = false;
+    }
+};
+
 // Watch for brand changes in the store
 watch(() => brandStore.activeBrandId, (newVal, oldVal) => {
     if (newVal && newVal !== oldVal) {
@@ -342,10 +668,11 @@ onMounted(() => {
                                     class="sr-only"
                                 />
                                 <span
-                                    :class="[
-                                        'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold mr-2',
-                                        platform.id.startsWith('facebook') ? 'bg-blue-100 text-blue-600' : 'bg-gradient-to-br from-purple-500 to-pink-500 text-white'
-                                    ]"
+                                    class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold mr-2"
+                                    :style="{
+                                        backgroundColor: platform.id.startsWith('facebook') ? '#dbeafe' : '#ec4899',
+                                        color: platform.id.startsWith('facebook') ? '#2563eb' : 'white'
+                                    }"
                                 >
                                     {{ platform.icon }}
                                 </span>
@@ -355,24 +682,79 @@ onMounted(() => {
                     </div>
 
                     <!-- Step 2: Select Media -->
-                    <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+                    <div
+                        class="bg-white dark:bg-gray-800 shadow rounded-lg p-6"
+                        @dragover="handleDragOver"
+                        @dragleave="handleDragLeave"
+                        @drop="handleDrop"
+                    >
                         <div class="flex items-center justify-between mb-4">
                             <h2 class="text-lg font-medium text-gray-900 dark:text-white">Select Media</h2>
-                            <span class="text-sm text-gray-500 dark:text-gray-400">
-                                Click to add/remove from batch
-                            </span>
+                            <div class="flex items-center gap-4">
+                                <span class="text-sm text-gray-500 dark:text-gray-400">
+                                    Click to add/remove from batch
+                                </span>
+                                <label class="cursor-pointer px-3 py-1.5 text-sm bg-primary-600 text-white rounded-md hover:bg-primary-700">
+                                    <input
+                                        type="file"
+                                        multiple
+                                        accept="image/*,video/*"
+                                        class="sr-only"
+                                        @change="handleFileSelect"
+                                    />
+                                    Upload Files
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Drag overlay -->
+                        <div
+                            v-if="isDragging"
+                            class="border-2 border-dashed border-primary-400 bg-primary-50 dark:bg-primary-900/20 rounded-lg p-12 text-center mb-4"
+                        >
+                            <svg class="mx-auto h-12 w-12 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 48 48">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" />
+                            </svg>
+                            <p class="mt-2 text-sm text-primary-600 dark:text-primary-400">Drop files here to upload</p>
+                        </div>
+
+                        <!-- Upload progress -->
+                        <div v-if="uploading" class="mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                    <div
+                                        class="bg-primary-600 h-2 rounded-full transition-all"
+                                        :style="{ width: `${uploadProgress}%` }"
+                                    ></div>
+                                </div>
+                                <span class="text-sm text-gray-500 dark:text-gray-400">{{ uploadProgress }}%</span>
+                            </div>
                         </div>
 
                         <div v-if="loadingMedia" class="text-center py-8 text-gray-500 dark:text-gray-400">
                             Loading media...
                         </div>
-                        <div v-else-if="brandMedia.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
-                            No media uploaded for this brand yet.
-                            <RouterLink to="/media" class="block mt-2 text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300">
-                                Go to Media Library to upload
-                            </RouterLink>
+                        <div v-else-if="brandMedia.length === 0 && !isDragging" class="text-center py-8">
+                            <label class="cursor-pointer block border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 hover:border-primary-400 dark:hover:border-primary-500 transition-colors">
+                                <input
+                                    type="file"
+                                    multiple
+                                    accept="image/*,video/*"
+                                    class="sr-only"
+                                    @change="handleFileSelect"
+                                />
+                                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 48 48">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" />
+                                </svg>
+                                <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                                    Drag & drop images or videos here, or click to browse
+                                </p>
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">
+                                    PNG, JPG, GIF, MP4, MOV up to 50MB
+                                </p>
+                            </label>
                         </div>
-                        <div v-else class="grid grid-cols-6 gap-3">
+                        <div v-else-if="!isDragging" class="grid grid-cols-6 gap-3">
                             <div
                                 v-for="media in brandMedia"
                                 :key="media.id"
@@ -407,9 +789,26 @@ onMounted(() => {
                     <!-- Step 3: Edit Posts (only show if posts exist) -->
                     <div v-if="posts.length > 0" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <!-- Left: Post List (Table/Card View) -->
-                        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+                        <div :class="['bg-white dark:bg-gray-800 shadow rounded-lg p-6', editingPlatformsIndex !== null ? 'overflow-visible' : '']">
                             <div class="flex items-center justify-between mb-4">
-                                <h2 class="text-lg font-medium text-gray-900 dark:text-white">Edit Posts</h2>
+                                <div class="flex items-center gap-3">
+                                    <h2 class="text-lg font-medium text-gray-900 dark:text-white">Edit Posts</h2>
+                                    <button
+                                        @click="openBulkPaste('titles')"
+                                        class="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300"
+                                        title="Paste multiple titles at once"
+                                    >
+                                        Bulk Paste Titles
+                                    </button>
+                                    <span class="text-gray-300 dark:text-gray-600">|</span>
+                                    <button
+                                        @click="openBulkPaste('captions')"
+                                        class="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300"
+                                        title="Paste multiple captions at once"
+                                    >
+                                        Bulk Paste Captions
+                                    </button>
+                                </div>
                                 <div class="flex gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
                                     <button
                                         @click="viewMode = 'card'"
@@ -473,7 +872,7 @@ onMounted(() => {
                             </div>
 
                             <!-- Table View -->
-                            <div v-else class="overflow-x-auto">
+                            <div v-else :class="editingPlatformsIndex !== null ? 'overflow-visible' : 'overflow-x-auto'">
                                 <table class="w-full text-sm">
                                     <thead>
                                         <tr class="border-b border-gray-200 dark:border-gray-600">
@@ -522,10 +921,65 @@ onMounted(() => {
                                                     class="w-full px-2 py-1 text-sm border border-gray-200 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-primary-500"
                                                 />
                                             </td>
-                                            <td class="py-2 px-2">
-                                                <span class="text-xs text-gray-500 dark:text-gray-400">
-                                                    {{ post.platforms.length || 0 }}
-                                                </span>
+                                            <td class="py-2 px-2 relative" @click.stop>
+                                                <!-- Display mode -->
+                                                <div
+                                                    v-if="editingPlatformsIndex !== index"
+                                                    @click="editingPlatformsIndex = index"
+                                                    class="flex flex-wrap gap-1 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded p-1 -m-1"
+                                                >
+                                                    <span
+                                                        v-for="platformId in post.platforms"
+                                                        :key="platformId"
+                                                        class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium"
+                                                        :style="{
+                                                            backgroundColor: platformId.startsWith('facebook') ? '#dbeafe' : '#fce7f3',
+                                                            color: platformId.startsWith('facebook') ? '#2563eb' : '#db2777'
+                                                        }"
+                                                    >
+                                                        {{ platformId.includes('feed') ? 'Feed' : platformId.includes('story') ? 'Story' : 'Reel' }}
+                                                    </span>
+                                                    <span v-if="post.platforms.length === 0" class="text-xs text-red-500">None</span>
+                                                </div>
+                                                <!-- Edit mode dropdown -->
+                                                <div
+                                                    v-else
+                                                    class="absolute z-10 top-0 left-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg p-2 min-w-[180px]"
+                                                >
+                                                    <div class="flex items-center justify-between mb-2">
+                                                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Platforms</span>
+                                                        <button
+                                                            @click="editingPlatformsIndex = null"
+                                                            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                                        >
+                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                    <label
+                                                        v-for="platform in platforms"
+                                                        :key="platform.id"
+                                                        class="flex items-center gap-2 py-1 px-1 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer"
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            :checked="post.platforms.includes(platform.id)"
+                                                            @change="togglePostPlatform(index, platform.id)"
+                                                            class="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500"
+                                                        />
+                                                        <span
+                                                            class="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold"
+                                                            :style="{
+                                                                backgroundColor: platform.id.startsWith('facebook') ? '#dbeafe' : '#ec4899',
+                                                                color: platform.id.startsWith('facebook') ? '#2563eb' : 'white'
+                                                            }"
+                                                        >
+                                                            {{ platform.icon }}
+                                                        </span>
+                                                        <span class="text-sm text-gray-700 dark:text-gray-300">{{ platform.name }}</span>
+                                                    </label>
+                                                </div>
                                             </td>
                                             <td class="py-2 px-2">
                                                 <button
@@ -588,10 +1042,11 @@ onMounted(() => {
                                                     class="sr-only"
                                                 />
                                                 <span
-                                                    :class="[
-                                                        'w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold mr-1',
-                                                        platform.id.startsWith('facebook') ? 'bg-blue-100 text-blue-600' : 'bg-gradient-to-br from-purple-500 to-pink-500 text-white'
-                                                    ]"
+                                                    class="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold mr-1"
+                                                    :style="{
+                                                        backgroundColor: platform.id.startsWith('facebook') ? '#dbeafe' : '#ec4899',
+                                                        color: platform.id.startsWith('facebook') ? '#2563eb' : 'white'
+                                                    }"
                                                 >
                                                     {{ platform.icon }}
                                                 </span>
@@ -605,7 +1060,20 @@ onMounted(() => {
 
                         <!-- Right: Mockup Preview -->
                         <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-                            <h2 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Preview</h2>
+                            <div class="flex items-center justify-between mb-4">
+                                <h2 class="text-lg font-medium text-gray-900 dark:text-white">Preview</h2>
+                                <button
+                                    v-if="selectedPost && selectedPost.platforms.length > 0"
+                                    @click="exportAsJpeg"
+                                    :disabled="exporting"
+                                    class="flex items-center gap-1 px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                    {{ exporting ? 'Exporting...' : 'Export JPEG' }}
+                                </button>
+                            </div>
 
                             <div v-if="!selectedPost" class="text-center text-gray-500 dark:text-gray-400 py-12">
                                 Select a post to preview
@@ -621,6 +1089,7 @@ onMounted(() => {
                                     <button
                                         v-for="platformId in selectedPost.platforms"
                                         :key="platformId"
+                                        @click="previewPlatform = platformId"
                                         :class="[
                                             'px-3 py-1 text-xs rounded-full',
                                             previewPlatform === platformId
@@ -632,109 +1101,59 @@ onMounted(() => {
                                     </button>
                                 </div>
 
-                                <!-- Instagram Feed Preview -->
-                                <div
-                                    v-if="previewPlatform === 'instagram_feed'"
-                                    class="max-w-sm mx-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
-                                >
-                                    <div class="flex items-center p-3">
-                                        <div v-if="brand?.logo_flat_url" class="w-8 h-8 rounded-full overflow-hidden">
-                                            <img :src="brand.logo_flat_url" :alt="brand.name" class="w-full h-full object-cover" />
-                                        </div>
-                                        <div v-else class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
-                                            {{ brand?.name?.charAt(0) || 'B' }}
-                                        </div>
-                                        <div class="ml-3">
-                                            <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ brand?.name || 'Brand Name' }}</p>
-                                        </div>
-                                    </div>
-                                    <div class="aspect-square bg-gray-100 dark:bg-gray-700">
-                                        <img :src="selectedPost.media.url" class="w-full h-full object-cover" />
-                                    </div>
-                                    <div class="p-3">
-                                        <div class="flex gap-4 mb-2 text-gray-900 dark:text-white">
-                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                                            </svg>
-                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                            </svg>
-                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
-                                            </svg>
-                                        </div>
-                                        <p class="text-sm text-gray-900 dark:text-white">
-                                            <span class="font-semibold">{{ brand?.name || 'brand' }}</span>
-                                            <span class="whitespace-pre-wrap">{{ truncatedCaption || ' Your caption here...' }}</span>
-                                        </p>
-                                    </div>
-                                </div>
+                                <!-- Mockup container for export -->
+                                <div ref="mockupRef" class="inline-block">
+                                    <!-- Instagram Feed Preview -->
+                                    <InstagramFeedPreview
+                                        v-if="previewPlatform === 'instagram_feed'"
+                                        :brand-name="brand?.instagram_handle || brand?.name || 'Brand Name'"
+                                        :brand-logo-url="brand?.logo_flat_url"
+                                        :media-url="selectedPost.media.url"
+                                        :caption="selectedPost.caption"
+                                    />
 
-                                <!-- Facebook Feed Preview -->
-                                <div
-                                    v-else-if="previewPlatform === 'facebook_feed'"
-                                    class="max-w-sm mx-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
-                                >
-                                    <div class="flex items-center p-3">
-                                        <div v-if="brand?.logo_flat_url" class="w-10 h-10 rounded-full overflow-hidden">
-                                            <img :src="brand.logo_flat_url" :alt="brand.name" class="w-full h-full object-cover" />
-                                        </div>
-                                        <div v-else class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">
-                                            {{ brand?.name?.charAt(0) || 'B' }}
-                                        </div>
-                                        <div class="ml-3">
-                                            <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ brand?.name || 'Brand Name' }}</p>
-                                            <p class="text-xs text-gray-500 dark:text-gray-400">Just now</p>
-                                        </div>
-                                    </div>
-                                    <div class="px-3 pb-2">
-                                        <p class="text-sm whitespace-pre-wrap text-gray-900 dark:text-white">{{ selectedPost.caption || 'Your caption here...' }}</p>
-                                    </div>
-                                    <div class="bg-gray-100 dark:bg-gray-700">
-                                        <img :src="selectedPost.media.url" class="w-full" />
-                                    </div>
-                                    <div class="p-3 border-t border-gray-200 dark:border-gray-700 flex justify-around">
-                                        <button class="flex items-center text-gray-500 dark:text-gray-400 text-sm">
-                                            <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
-                                            </svg>
-                                            Like
-                                        </button>
-                                        <button class="flex items-center text-gray-500 dark:text-gray-400 text-sm">
-                                            <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                            </svg>
-                                            Comment
-                                        </button>
-                                        <button class="flex items-center text-gray-500 dark:text-gray-400 text-sm">
-                                            <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
-                                            </svg>
-                                            Share
-                                        </button>
-                                    </div>
-                                </div>
+                                    <!-- Facebook Feed Preview -->
+                                    <FacebookFeedPreview
+                                        v-else-if="previewPlatform === 'facebook_feed'"
+                                        :brand-name="brand?.facebook_page_name || brand?.name || 'Brand Name'"
+                                        :brand-logo-url="brand?.logo_flat_url"
+                                        :media-url="selectedPost.media.url"
+                                        :caption="selectedPost.caption"
+                                    />
 
-                                <!-- Story/Reel placeholders -->
-                                <div
-                                    v-else-if="previewPlatform.includes('story') || previewPlatform.includes('reel')"
-                                    class="max-w-[280px] mx-auto bg-black rounded-2xl overflow-hidden aspect-[9/16] relative"
-                                >
-                                    <img :src="selectedPost.media.url" class="w-full h-full object-cover" />
-                                    <div class="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-black/60 to-transparent pointer-events-none"></div>
-                                    <div class="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/60 to-transparent pointer-events-none"></div>
-                                    <div class="absolute top-4 left-3 flex items-center">
-                                        <div v-if="brand?.logo_flat_url" class="w-8 h-8 rounded-full overflow-hidden border-2 border-white">
-                                            <img :src="brand.logo_flat_url" :alt="brand.name" class="w-full h-full object-cover" />
-                                        </div>
-                                        <div v-else class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold border-2 border-white">
-                                            {{ brand?.name?.charAt(0) || 'B' }}
-                                        </div>
-                                        <span class="ml-2 text-white text-sm font-medium">{{ brand?.name }}</span>
-                                    </div>
-                                    <div v-if="selectedPost.caption" class="absolute bottom-4 left-3 right-3">
-                                        <p class="text-white text-sm line-clamp-2">{{ truncatedCaption }}</p>
-                                    </div>
+                                    <!-- Instagram Story Preview -->
+                                    <InstagramStoryPreview
+                                        v-else-if="previewPlatform === 'instagram_story'"
+                                        :brand-name="brand?.instagram_handle || brand?.name || 'Brand Name'"
+                                        :brand-logo-url="brand?.logo_flat_url"
+                                        :media-url="selectedPost.media.url"
+                                    />
+
+                                    <!-- Instagram Reel Preview -->
+                                    <InstagramReelPreview
+                                        v-else-if="previewPlatform === 'instagram_reel'"
+                                        :brand-name="brand?.instagram_handle || brand?.name || 'Brand Name'"
+                                        :brand-logo-url="brand?.logo_flat_url"
+                                        :media-url="selectedPost.media.url"
+                                        :caption="selectedPost.caption"
+                                    />
+
+                                    <!-- Facebook Story Preview -->
+                                    <FacebookStoryPreview
+                                        v-else-if="previewPlatform === 'facebook_story'"
+                                        :brand-name="brand?.facebook_page_name || brand?.name || 'Brand Name'"
+                                        :brand-logo-url="brand?.logo_flat_url"
+                                        :media-url="selectedPost.media.url"
+                                    />
+
+                                    <!-- Facebook Reel Preview -->
+                                    <FacebookReelPreview
+                                        v-else-if="previewPlatform === 'facebook_reel'"
+                                        :brand-name="brand?.facebook_page_name || brand?.name || 'Brand Name'"
+                                        :brand-logo-url="brand?.logo_flat_url"
+                                        :media-url="selectedPost.media.url"
+                                        :caption="selectedPost.caption"
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -823,6 +1242,188 @@ onMounted(() => {
                                 Back to Posts
                             </RouterLink>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Import from Spreadsheet Modal -->
+        <div v-if="showImportModal" class="fixed inset-0 z-50 overflow-y-auto">
+            <div class="flex items-center justify-center min-h-screen px-4">
+                <div class="fixed inset-0 bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-75" @click="resetImportModal"></div>
+
+                <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+                            Import from Spreadsheet
+                            <span class="text-sm font-normal text-gray-500 dark:text-gray-400 ml-2">
+                                Step {{ importStep }} of 2
+                            </span>
+                        </h3>
+                        <button @click="resetImportModal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Step 1: Paste Data -->
+                    <div v-if="importStep === 1">
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                            Copy rows from your spreadsheet and paste below. Expected columns (tab-separated):
+                        </p>
+                        <div class="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                            <code class="text-xs text-gray-700 dark:text-gray-300">
+                                filename | title | caption | platforms (optional)
+                            </code>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                Platforms: comma-separated like "facebook_feed,instagram_feed"
+                            </p>
+                        </div>
+                        <textarea
+                            v-model="importText"
+                            rows="10"
+                            placeholder="IMG_001.jpg&#9;December Promo&#9;Check out our holiday sale!&#9;facebook_feed,instagram_feed&#10;IMG_002.jpg&#9;New Product&#9;Introducing our latest...&#10;..."
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-primary-500 focus:border-primary-500 font-mono text-sm"
+                        ></textarea>
+                        <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                            {{ posts.length }} post(s) waiting to be matched.
+                        </p>
+                        <div class="mt-4 flex justify-end gap-3">
+                            <button
+                                @click="resetImportModal"
+                                class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                @click="parseSpreadsheetData"
+                                :disabled="!importText.trim()"
+                                class="px-4 py-2 bg-primary-600 dark:bg-primary-500 text-white rounded-md hover:bg-primary-700 dark:hover:bg-primary-600 disabled:opacity-50"
+                            >
+                                Preview Matches
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Preview Matches -->
+                    <div v-else-if="importStep === 2">
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                            Review matched data before applying. Only matched rows will be updated.
+                        </p>
+                        <div class="max-h-80 overflow-y-auto border border-gray-200 dark:border-gray-600 rounded-lg">
+                            <table class="w-full text-sm">
+                                <thead class="bg-gray-50 dark:bg-gray-700 sticky top-0">
+                                    <tr>
+                                        <th class="text-left py-2 px-3 font-medium text-gray-500 dark:text-gray-400">Status</th>
+                                        <th class="text-left py-2 px-3 font-medium text-gray-500 dark:text-gray-400">Filename</th>
+                                        <th class="text-left py-2 px-3 font-medium text-gray-500 dark:text-gray-400">Title</th>
+                                        <th class="text-left py-2 px-3 font-medium text-gray-500 dark:text-gray-400">Caption</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr
+                                        v-for="(row, index) in parsedImportData"
+                                        :key="index"
+                                        :class="row.matchedPost ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20'"
+                                    >
+                                        <td class="py-2 px-3">
+                                            <span v-if="row.matchedPost" class="text-green-600 dark:text-green-400">✓</span>
+                                            <span v-else class="text-red-500 dark:text-red-400">✗</span>
+                                        </td>
+                                        <td class="py-2 px-3">
+                                            <div class="text-gray-900 dark:text-white">{{ row.filename }}</div>
+                                            <div v-if="row.matchedFilename" class="text-xs text-gray-500 dark:text-gray-400">
+                                                → {{ row.matchedFilename }}
+                                            </div>
+                                        </td>
+                                        <td class="py-2 px-3 text-gray-700 dark:text-gray-300 max-w-[150px] truncate">
+                                            {{ row.title || '-' }}
+                                        </td>
+                                        <td class="py-2 px-3 text-gray-700 dark:text-gray-300 max-w-[200px] truncate">
+                                            {{ row.caption || '-' }}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                            {{ parsedImportData.filter(r => r.matchedPost).length }} of {{ parsedImportData.length }} rows matched.
+                        </p>
+                        <div class="mt-4 flex justify-end gap-3">
+                            <button
+                                @click="importStep = 1"
+                                class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                            >
+                                Back
+                            </button>
+                            <button
+                                @click="applyImportData"
+                                :disabled="!parsedImportData.some(r => r.matchedPost)"
+                                class="px-4 py-2 bg-primary-600 dark:bg-primary-500 text-white rounded-md hover:bg-primary-700 dark:hover:bg-primary-600 disabled:opacity-50"
+                            >
+                                Apply {{ parsedImportData.filter(r => r.matchedPost).length }} Matches
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bulk Paste Modal -->
+        <div v-if="showBulkPasteModal" class="fixed inset-0 z-50 overflow-y-auto">
+            <div class="flex items-center justify-center min-h-screen px-4">
+                <div class="fixed inset-0 bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-75" @click="showBulkPasteModal = false"></div>
+
+                <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+                            Bulk Paste {{ bulkPasteMode === 'titles' ? 'Titles' : 'Captions' }}
+                        </h3>
+                        <button @click="showBulkPasteModal = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                        <template v-if="bulkPasteMode === 'titles'">
+                            Paste one title per line. They will be applied to posts in order.
+                        </template>
+                        <template v-else>
+                            Paste captions separated by <code class="bg-gray-100 dark:bg-gray-700 px-1 rounded">---</code> on its own line.
+                            They will be applied to posts in order.
+                        </template>
+                    </p>
+
+                    <textarea
+                        v-model="bulkPasteText"
+                        rows="10"
+                        :placeholder="bulkPasteMode === 'titles'
+                            ? 'December Promo\nNew Product Launch\nHoliday Sale\nBehind the Scenes'
+                            : 'Check out our holiday sale! 🎄\n\nShop now at example.com\n---\nIntroducing our latest product...\n\n#NewProduct\n---\nDon\'t miss out!'"
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    ></textarea>
+
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                        {{ bulkPasteCount }} {{ bulkPasteMode === 'titles' ? 'title(s)' : 'caption(s)' }} → {{ posts.length }} post(s)
+                    </p>
+
+                    <div class="mt-4 flex justify-end gap-3">
+                        <button
+                            @click="showBulkPasteModal = false"
+                            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            @click="applyBulkPaste"
+                            :disabled="!bulkPasteText.trim()"
+                            class="px-4 py-2 bg-primary-600 dark:bg-primary-500 text-white rounded-md hover:bg-primary-700 dark:hover:bg-primary-600 disabled:opacity-50"
+                        >
+                            Apply
+                        </button>
                     </div>
                 </div>
             </div>

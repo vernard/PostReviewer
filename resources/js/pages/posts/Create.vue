@@ -8,6 +8,14 @@ import axios from 'axios';
 import html2canvas from 'html2canvas-pro';
 import { validatePost, getCaptionStatus, PLATFORM_LIMITS } from '@/utils/platformValidation';
 import { extractEdgeColor } from '@/composables/useEdgeColor';
+import {
+    InstagramFeedPreview,
+    FacebookFeedPreview,
+    InstagramStoryPreview,
+    InstagramReelPreview,
+    FacebookStoryPreview,
+    FacebookReelPreview
+} from '@/components/mockups';
 
 const router = useRouter();
 const route = useRoute();
@@ -469,6 +477,53 @@ watch(() => brandStore.activeBrandId, (newVal, oldVal) => {
     }
 });
 
+// Convert an image URL to a data URL to avoid CORS issues with html2canvas
+const imageToDataUrl = async (url) => {
+    if (!url) return null;
+    try {
+        // Check if this is a media URL that we can proxy through the API
+        const mediaMatch = url.match(/\/storage\/brands\/\d+\/media\/([^/]+)/);
+        if (mediaMatch && selectedMedia.value.length > 0) {
+            // Find the media by matching the filename
+            const filename = mediaMatch[1];
+            const media = selectedMedia.value.find(m => m.url.includes(filename));
+            if (media) {
+                // Use the stream API endpoint to fetch via the authenticated API
+                const response = await axios.get(`/api/media/${media.id}/stream`, {
+                    responseType: 'blob'
+                });
+                return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.readAsDataURL(response.data);
+                });
+            }
+        }
+        // Fallback: try direct fetch
+        const response = await fetch(url);
+        const blob = await response.blob();
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(blob);
+        });
+    } catch (err) {
+        console.warn('Failed to convert image to data URL:', url, err);
+        return null;
+    }
+};
+
+// Create a safe filename from text
+const slugify = (text) => {
+    return text
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .trim()
+        .substring(0, 50);
+};
+
 const exportAsJpeg = async () => {
     if (!mockupRef.value || exporting.value) return;
 
@@ -476,6 +531,24 @@ const exportAsJpeg = async () => {
         exporting.value = true;
         // Wait a moment for any animations to settle
         await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Convert all images in the mockup to data URLs to avoid CORS issues
+        const images = mockupRef.value.querySelectorAll('img');
+        const originalSrcs = new Map();
+
+        await Promise.all(Array.from(images).map(async (img) => {
+            const originalSrc = img.src;
+            if (originalSrc && !originalSrc.startsWith('data:')) {
+                originalSrcs.set(img, originalSrc);
+                const dataUrl = await imageToDataUrl(originalSrc);
+                if (dataUrl) {
+                    img.src = dataUrl;
+                }
+            }
+        }));
+
+        // Wait for images to update in the DOM
+        await new Promise(resolve => setTimeout(resolve, 50));
 
         const canvas = await html2canvas(mockupRef.value, {
             backgroundColor: '#ffffff',
@@ -485,10 +558,16 @@ const exportAsJpeg = async () => {
             logging: false,
         });
 
+        // Restore original image sources
+        originalSrcs.forEach((src, img) => {
+            img.src = src;
+        });
+
         const link = document.createElement('a');
         const platformName = previewPlatform.value.replace(/_/g, '-');
-        const brandName = brand.value?.name || 'post';
-        link.download = `${brandName}-${platformName}-${Date.now()}.jpg`;
+        const postTitle = form.value.title ? slugify(form.value.title) : 'draft';
+        const brandName = brand.value?.name ? slugify(brand.value.name) : 'brand';
+        link.download = `${brandName}-${postTitle}-${platformName}.jpg`;
         link.href = canvas.toDataURL('image/jpeg', 0.95);
         document.body.appendChild(link);
         link.click();
@@ -804,602 +883,80 @@ onUnmounted(() => {
                         </div>
 
                         <!-- Instagram Feed Preview -->
-                        <div
+                        <InstagramFeedPreview
                             v-else-if="(previewPlatform || form.platforms[0]).includes('instagram_feed')"
-                            class="w-full max-w-[280px] mx-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
-                        >
-                            <!-- Header -->
-                            <div class="flex items-center p-3">
-                                <div v-if="selectedBrand?.logo_flat_url" class="w-8 h-8 rounded-full overflow-hidden">
-                                    <img :src="selectedBrand.logo_flat_url" :alt="selectedBrand.name" class="w-full h-full object-cover" />
-                                </div>
-                                <div v-else class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
-                                    {{ instagramDisplayName.charAt(0) }}
-                                </div>
-                                <div class="ml-3">
-                                    <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ instagramDisplayName }}</p>
-                                </div>
-                            </div>
-                            <!-- Image/Video -->
-                            <div class="aspect-square relative transition-colors duration-300" :style="{ backgroundColor: mediaEdgeColor }">
-                                <!-- Processing state -->
-                                <div
-                                    v-if="selectedMedia[0]?.status === 'processing'"
-                                    class="w-full h-full flex flex-col items-center justify-center"
-                                >
-                                    <svg class="w-12 h-12 text-gray-400 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/>
-                                    </svg>
-                                    <span class="text-gray-400 text-sm mt-2">Processing video...</span>
-                                </div>
-                                <!-- Video playing inline -->
-                                <video
-                                    v-else-if="isPlayingVideo && selectedMedia[0]?.type === 'video'"
-                                    :src="selectedMedia[0].url"
-                                    class="w-full h-full object-contain"
-                                    autoplay
-                                    controls
-                                    @click.stop
-                                    @ended="isPlayingVideo = false"
-                                />
-                                <!-- Image/thumbnail -->
-                                <img
-                                    v-else-if="selectedMedia[0]"
-                                    :src="selectedMedia[0].thumbnail_url || selectedMedia[0].url"
-                                    class="w-full h-full object-cover"
-                                />
-                                <div v-else class="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500">
-                                    No image selected
-                                </div>
-                                <!-- Video play button -->
-                                <button
-                                    v-if="selectedMedia[0]?.type === 'video' && !isPlayingVideo && selectedMedia[0]?.status !== 'processing'"
-                                    @click="isPlayingVideo = true"
-                                    class="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors"
-                                >
-                                    <div class="w-16 h-16 rounded-full bg-black/60 flex items-center justify-center">
-                                        <svg class="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
-                                            <path d="M8 5v14l11-7z" />
-                                        </svg>
-                                    </div>
-                                </button>
-                            </div>
-                            <!-- Actions -->
-                            <div class="p-3">
-                                <div class="flex gap-4 mb-2 text-gray-900 dark:text-white">
-                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                                    </svg>
-                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                    </svg>
-                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
-                                    </svg>
-                                </div>
-                                <p class="text-sm text-gray-900 dark:text-white">
-                                    <span class="font-semibold">{{ instagramDisplayName }}</span>
-                                    <span class="whitespace-pre-wrap">{{ truncatedCaption || ' Your caption here...' }}</span>
-                                </p>
-                            </div>
-                        </div>
+                            :brand-name="instagramDisplayName"
+                            :brand-logo-url="selectedBrand?.logo_flat_url"
+                            :media-url="selectedMedia[0]?.url"
+                            :thumbnail-url="selectedMedia[0]?.thumbnail_url"
+                            :media-type="selectedMedia[0]?.type || 'image'"
+                            :media-status="selectedMedia[0]?.status === 'processing' ? 'processing' : 'ready'"
+                            :caption="form.caption"
+                            :background-color="mediaEdgeColor"
+                        />
 
                         <!-- Facebook Feed Preview -->
-                        <div
+                        <FacebookFeedPreview
                             v-else-if="(previewPlatform || form.platforms[0]).includes('facebook_feed')"
-                            class="w-full max-w-[280px] mx-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
-                        >
-                            <!-- Header -->
-                            <div class="flex items-center p-3">
-                                <div v-if="selectedBrand?.logo_flat_url" class="w-10 h-10 rounded-full overflow-hidden">
-                                    <img :src="selectedBrand.logo_flat_url" :alt="selectedBrand.name" class="w-full h-full object-cover" />
-                                </div>
-                                <div v-else class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">
-                                    {{ facebookDisplayName.charAt(0) }}
-                                </div>
-                                <div class="ml-3">
-                                    <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ facebookDisplayName }}</p>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400">Just now</p>
-                                </div>
-                            </div>
-                            <!-- Caption -->
-                            <div class="px-3 pb-2">
-                                <p class="text-sm whitespace-pre-wrap text-gray-900 dark:text-white">{{ form.caption || 'Your caption here...' }}</p>
-                            </div>
-                            <!-- Image/Video -->
-                            <div class="relative transition-colors duration-300" :style="{ backgroundColor: mediaEdgeColor }">
-                                <!-- Processing state -->
-                                <div
-                                    v-if="selectedMedia[0]?.status === 'processing'"
-                                    class="aspect-video flex flex-col items-center justify-center"
-                                >
-                                    <svg class="w-12 h-12 text-gray-400 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/>
-                                    </svg>
-                                    <span class="text-gray-400 text-sm mt-2">Processing video...</span>
-                                </div>
-                                <!-- Video playing inline -->
-                                <video
-                                    v-else-if="isPlayingVideo && selectedMedia[0]?.type === 'video'"
-                                    :src="selectedMedia[0].url"
-                                    class="w-full object-contain"
-                                    autoplay
-                                    controls
-                                    @click.stop
-                                    @ended="isPlayingVideo = false"
-                                />
-                                <!-- Image/thumbnail -->
-                                <img
-                                    v-else-if="selectedMedia[0]"
-                                    :src="selectedMedia[0].thumbnail_url || selectedMedia[0].url"
-                                    class="w-full"
-                                />
-                                <div v-else class="aspect-video flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500">
-                                    No image selected
-                                </div>
-                                <!-- Video play button -->
-                                <button
-                                    v-if="selectedMedia[0]?.type === 'video' && !isPlayingVideo && selectedMedia[0]?.status !== 'processing'"
-                                    @click="isPlayingVideo = true"
-                                    class="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors"
-                                >
-                                    <div class="w-16 h-16 rounded-full bg-black/60 flex items-center justify-center">
-                                        <svg class="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
-                                            <path d="M8 5v14l11-7z" />
-                                        </svg>
-                                    </div>
-                                </button>
-                            </div>
-                            <!-- Actions -->
-                            <div class="p-3 border-t border-gray-200 dark:border-gray-700 flex justify-around">
-                                <button class="flex items-center text-gray-500 dark:text-gray-400 text-sm">
-                                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
-                                    </svg>
-                                    Like
-                                </button>
-                                <button class="flex items-center text-gray-500 dark:text-gray-400 text-sm">
-                                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                    </svg>
-                                    Comment
-                                </button>
-                                <button class="flex items-center text-gray-500 dark:text-gray-400 text-sm">
-                                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
-                                    </svg>
-                                    Share
-                                </button>
-                            </div>
-                        </div>
+                            :brand-name="facebookDisplayName"
+                            :brand-logo-url="selectedBrand?.logo_flat_url"
+                            :media-url="selectedMedia[0]?.url"
+                            :thumbnail-url="selectedMedia[0]?.thumbnail_url"
+                            :media-type="selectedMedia[0]?.type || 'image'"
+                            :media-status="selectedMedia[0]?.status === 'processing' ? 'processing' : 'ready'"
+                            :caption="form.caption"
+                            :background-color="mediaEdgeColor"
+                        />
 
                         <!-- Instagram Story Preview -->
-                        <div
+                        <InstagramStoryPreview
                             v-else-if="previewPlatform === 'instagram_story'"
-                            class="max-w-[280px] mx-auto rounded-2xl overflow-hidden aspect-[9/16] relative transition-colors duration-300"
-                            :style="{ backgroundColor: mediaEdgeColor }"
-                        >
-                            <!-- Processing state -->
-                            <div
-                                v-if="selectedMedia[0]?.status === 'processing'"
-                                class="w-full h-full flex flex-col items-center justify-center"
-                            >
-                                <svg class="w-12 h-12 text-gray-400 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/>
-                                </svg>
-                                <span class="text-gray-400 text-sm mt-2">Processing video...</span>
-                            </div>
-                            <!-- Video playing inline -->
-                            <video
-                                v-else-if="isPlayingVideo && selectedMedia[0]?.type === 'video'"
-                                :src="selectedMedia[0].url"
-                                class="w-full h-full object-cover"
-                                autoplay
-                                controls
-                                @click.stop
-                                @ended="isPlayingVideo = false"
-                            />
-                            <!-- Image/thumbnail -->
-                            <img
-                                v-else-if="selectedMedia[0]"
-                                :src="selectedMedia[0].thumbnail_url || selectedMedia[0].url"
-                                class="w-full h-full object-cover"
-                            />
-                            <div v-else class="w-full h-full flex items-center justify-center text-gray-500">
-                                No image selected
-                            </div>
-                            <!-- Video play button -->
-                            <button
-                                v-if="selectedMedia[0]?.type === 'video' && !isPlayingVideo && selectedMedia[0]?.status !== 'processing'"
-                                @click="isPlayingVideo = true"
-                                class="absolute inset-0 flex items-center justify-center z-10"
-                            >
-                                <div class="w-16 h-16 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors">
-                                    <svg class="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M8 5v14l11-7z" />
-                                    </svg>
-                                </div>
-                            </button>
-                            <!-- Top gradient overlay -->
-                            <div class="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-black/60 to-transparent pointer-events-none"></div>
-                            <!-- Progress bar -->
-                            <div class="absolute top-2 left-2 right-2 h-0.5 bg-white/30 rounded-full overflow-hidden">
-                                <div class="h-full w-1/3 bg-white rounded-full"></div>
-                            </div>
-                            <!-- Header -->
-                            <div class="absolute top-4 left-0 right-0 px-3 flex items-center justify-between">
-                                <div class="flex items-center">
-                                    <div class="p-0.5 rounded-full bg-gradient-to-br from-yellow-400 via-pink-500 to-purple-600">
-                                        <div v-if="selectedBrand?.logo_flat_url" class="w-9 h-9 rounded-full overflow-hidden border-2 border-black bg-white">
-                                            <img :src="selectedBrand.logo_flat_url" :alt="selectedBrand.name" class="w-full h-full object-cover" />
-                                        </div>
-                                        <div v-else class="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold border-2 border-black">
-                                            {{ instagramDisplayName.charAt(0) }}
-                                        </div>
-                                    </div>
-                                    <span class="ml-2 text-white text-sm font-medium">{{ instagramDisplayName }}</span>
-                                    <span class="ml-1 text-white/60 text-xs">2h</span>
-                                </div>
-                                <div class="flex items-center gap-3">
-                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                                    </svg>
-                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </div>
-                            </div>
-                            <!-- Bottom gradient overlay -->
-                            <div class="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/60 to-transparent pointer-events-none"></div>
-                            <!-- Bottom message input -->
-                            <div class="absolute bottom-4 left-3 right-3 flex items-center gap-2">
-                                <div class="flex-1 border border-white/40 rounded-full px-4 py-2 bg-black/20">
-                                    <span class="text-white/80 text-sm">Send message</span>
-                                </div>
-                                <svg class="w-6 h-6 text-white drop-shadow-md" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                                </svg>
-                                <svg class="w-6 h-6 text-white drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                                </svg>
-                            </div>
-                        </div>
+                            :brand-name="instagramDisplayName"
+                            :brand-logo-url="selectedBrand?.logo_flat_url"
+                            :media-url="selectedMedia[0]?.url"
+                            :thumbnail-url="selectedMedia[0]?.thumbnail_url"
+                            :media-type="selectedMedia[0]?.type || 'image'"
+                            :media-status="selectedMedia[0]?.status === 'processing' ? 'processing' : 'ready'"
+                            :background-color="mediaEdgeColor"
+                        />
 
                         <!-- Instagram Reel Preview -->
-                        <div
+                        <InstagramReelPreview
                             v-else-if="previewPlatform === 'instagram_reel'"
-                            class="max-w-[280px] mx-auto rounded-2xl overflow-hidden aspect-[9/16] relative transition-colors duration-300"
-                            :style="{ backgroundColor: mediaEdgeColor }"
-                        >
-                            <!-- Processing state -->
-                            <div
-                                v-if="selectedMedia[0]?.status === 'processing'"
-                                class="w-full h-full flex flex-col items-center justify-center"
-                            >
-                                <svg class="w-12 h-12 text-gray-400 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/>
-                                </svg>
-                                <span class="text-gray-400 text-sm mt-2">Processing video...</span>
-                            </div>
-                            <!-- Video playing inline -->
-                            <video
-                                v-else-if="isPlayingVideo && selectedMedia[0]?.type === 'video'"
-                                :src="selectedMedia[0].url"
-                                class="w-full h-full object-cover"
-                                autoplay
-                                controls
-                                @click.stop
-                                @ended="isPlayingVideo = false"
-                            />
-                            <!-- Image/thumbnail -->
-                            <img
-                                v-else-if="selectedMedia[0]"
-                                :src="selectedMedia[0].thumbnail_url || selectedMedia[0].url"
-                                class="w-full h-full object-cover"
-                            />
-                            <div v-else class="w-full h-full flex items-center justify-center text-gray-500">
-                                No image selected
-                            </div>
-                            <!-- Video play button -->
-                            <button
-                                v-if="selectedMedia[0]?.type === 'video' && !isPlayingVideo && selectedMedia[0]?.status !== 'processing'"
-                                @click="isPlayingVideo = true"
-                                class="absolute inset-0 flex items-center justify-center z-10"
-                            >
-                                <div class="w-16 h-16 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors">
-                                    <svg class="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M8 5v14l11-7z" />
-                                    </svg>
-                                </div>
-                            </button>
-                            <!-- Bottom gradient overlay -->
-                            <div class="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/70 to-transparent pointer-events-none"></div>
-                            <!-- Right sidebar actions -->
-                            <div class="absolute right-3 bottom-24 flex flex-col items-center gap-4 drop-shadow-lg">
-                                <div class="flex flex-col items-center">
-                                    <svg class="w-7 h-7 text-white drop-shadow-md" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                                    </svg>
-                                    <span class="text-white text-xs mt-1 drop-shadow-md">1.2K</span>
-                                </div>
-                                <div class="flex flex-col items-center">
-                                    <svg class="w-7 h-7 text-white drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                    </svg>
-                                    <span class="text-white text-xs mt-1 drop-shadow-md">48</span>
-                                </div>
-                                <div class="flex flex-col items-center">
-                                    <svg class="w-7 h-7 text-white drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                                    </svg>
-                                </div>
-                                <div class="flex flex-col items-center">
-                                    <svg class="w-7 h-7 text-white drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
-                                    </svg>
-                                </div>
-                                <div class="w-7 h-7 rounded border-2 border-white overflow-hidden shadow-md">
-                                    <div v-if="selectedBrand?.logo_flat_url">
-                                        <img :src="selectedBrand.logo_flat_url" class="w-full h-full object-cover" />
-                                    </div>
-                                    <div v-else class="w-full h-full bg-gradient-to-br from-purple-500 to-pink-500"></div>
-                                </div>
-                            </div>
-                            <!-- Bottom content -->
-                            <div class="absolute bottom-4 left-3 right-14">
-                                <div class="flex items-center mb-2">
-                                    <div v-if="selectedBrand?.logo_flat_url" class="w-8 h-8 rounded-full overflow-hidden">
-                                        <img :src="selectedBrand.logo_flat_url" :alt="selectedBrand.name" class="w-full h-full object-cover" />
-                                    </div>
-                                    <div v-else class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
-                                        {{ instagramDisplayName.charAt(0) }}
-                                    </div>
-                                    <span class="ml-2 text-white text-sm font-semibold">{{ instagramDisplayName }}</span>
-                                    <button class="ml-2 px-3 py-1 border border-white rounded text-white text-xs font-semibold">Follow</button>
-                                </div>
-                                <p class="text-white text-sm line-clamp-2">{{ truncatedCaption || 'Your caption here...' }}</p>
-                                <!-- Audio bar -->
-                                <div class="flex items-center mt-2">
-                                    <svg class="w-3 h-3 text-white mr-1" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
-                                    </svg>
-                                    <span class="text-white text-xs">Original Audio</span>
-                                </div>
-                            </div>
-                        </div>
+                            :brand-name="instagramDisplayName"
+                            :brand-logo-url="selectedBrand?.logo_flat_url"
+                            :media-url="selectedMedia[0]?.url"
+                            :thumbnail-url="selectedMedia[0]?.thumbnail_url"
+                            :media-type="selectedMedia[0]?.type || 'video'"
+                            :media-status="selectedMedia[0]?.status === 'processing' ? 'processing' : 'ready'"
+                            :caption="form.caption"
+                            :background-color="mediaEdgeColor"
+                        />
 
                         <!-- Facebook Reel Preview -->
-                        <div
+                        <FacebookReelPreview
                             v-else-if="previewPlatform === 'facebook_reel'"
-                            class="max-w-[280px] mx-auto rounded-2xl overflow-hidden aspect-[9/16] relative transition-colors duration-300"
-                            :style="{ backgroundColor: mediaEdgeColor }"
-                        >
-                            <!-- Processing state -->
-                            <div
-                                v-if="selectedMedia[0]?.status === 'processing'"
-                                class="w-full h-full flex flex-col items-center justify-center"
-                            >
-                                <svg class="w-12 h-12 text-gray-400 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/>
-                                </svg>
-                                <span class="text-gray-400 text-sm mt-2">Processing video...</span>
-                            </div>
-                            <!-- Video playing inline -->
-                            <video
-                                v-else-if="isPlayingVideo && selectedMedia[0]?.type === 'video'"
-                                :src="selectedMedia[0].url"
-                                class="w-full h-full object-cover"
-                                autoplay
-                                controls
-                                @click.stop
-                                @ended="isPlayingVideo = false"
-                            />
-                            <!-- Image/thumbnail -->
-                            <img
-                                v-else-if="selectedMedia[0]"
-                                :src="selectedMedia[0].thumbnail_url || selectedMedia[0].url"
-                                class="w-full h-full object-cover"
-                            />
-                            <div v-else class="w-full h-full flex items-center justify-center text-gray-500">
-                                No image selected
-                            </div>
-                            <!-- Video play button -->
-                            <button
-                                v-if="selectedMedia[0]?.type === 'video' && !isPlayingVideo && selectedMedia[0]?.status !== 'processing'"
-                                @click="isPlayingVideo = true"
-                                class="absolute inset-0 flex items-center justify-center z-10"
-                            >
-                                <div class="w-16 h-16 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors">
-                                    <svg class="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M8 5v14l11-7z" />
-                                    </svg>
-                                </div>
-                            </button>
-                            <!-- Bottom gradient overlay -->
-                            <div class="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/70 via-black/30 to-transparent pointer-events-none"></div>
-                            <!-- Right sidebar actions -->
-                            <div class="absolute right-3 bottom-24 flex flex-col items-center gap-5 drop-shadow-lg">
-                                <!-- Like -->
-                                <div class="flex flex-col items-center">
-                                    <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                                        <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M2 20h2c.55 0 1-.45 1-1v-9c0-.55-.45-1-1-1H2v11zm19.83-7.12c.11-.25.17-.52.17-.8V11c0-1.1-.9-2-2-2h-5.5l.92-4.65c.05-.22.02-.46-.08-.66-.23-.45-.52-.86-.88-1.22L14 2 7.59 8.41C7.21 8.79 7 9.3 7 9.83v7.84C7 18.95 8.05 20 9.34 20h8.11c.7 0 1.36-.37 1.72-.97l2.66-6.15z"/>
-                                        </svg>
-                                    </div>
-                                    <span class="text-white text-xs mt-1 font-medium drop-shadow-md">1.2K</span>
-                                </div>
-                                <!-- Comment -->
-                                <div class="flex flex-col items-center">
-                                    <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                                        <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
-                                        </svg>
-                                    </div>
-                                    <span class="text-white text-xs mt-1 font-medium drop-shadow-md">48</span>
-                                </div>
-                                <!-- Share -->
-                                <div class="flex flex-col items-center">
-                                    <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                                        <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M21.707 11.293l-8-8A1 1 0 0012 4v3.545A11.015 11.015 0 002 18.5V20a1 1 0 001.784.62 11.456 11.456 0 018.216-4.073V20a1 1 0 001.707.707l8-8a1 1 0 000-1.414z"/>
-                                        </svg>
-                                    </div>
-                                </div>
-                                <!-- Music/Audio -->
-                                <div class="flex flex-col items-center">
-                                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center border-2 border-white overflow-hidden">
-                                        <svg class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
-                                        </svg>
-                                    </div>
-                                </div>
-                            </div>
-                            <!-- Bottom content -->
-                            <div class="absolute bottom-4 left-3 right-14">
-                                <!-- Profile + Follow -->
-                                <div class="flex items-center mb-2">
-                                    <div v-if="selectedBrand?.logo_flat_url" class="w-9 h-9 rounded-full overflow-hidden border-2 border-white">
-                                        <img :src="selectedBrand.logo_flat_url" :alt="selectedBrand.name" class="w-full h-full object-cover" />
-                                    </div>
-                                    <div v-else class="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-bold border-2 border-white">
-                                        {{ facebookDisplayName.charAt(0) }}
-                                    </div>
-                                    <span class="ml-2 text-white text-sm font-semibold drop-shadow-md">{{ facebookDisplayName }}</span>
-                                    <span class="mx-1 text-white/60">·</span>
-                                    <button class="text-white text-sm font-semibold drop-shadow-md">Follow</button>
-                                </div>
-                                <!-- Caption -->
-                                <p class="text-white text-sm drop-shadow-md line-clamp-2 mb-2">{{ truncatedCaption || 'Your caption here...' }}</p>
-                                <!-- Audio bar -->
-                                <div class="flex items-center">
-                                    <svg class="w-4 h-4 text-white mr-2" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
-                                    </svg>
-                                    <span class="text-white text-xs drop-shadow-md">Original audio · {{ facebookDisplayName }}</span>
-                                </div>
-                            </div>
-                        </div>
+                            :brand-name="facebookDisplayName"
+                            :brand-logo-url="selectedBrand?.logo_flat_url"
+                            :media-url="selectedMedia[0]?.url"
+                            :thumbnail-url="selectedMedia[0]?.thumbnail_url"
+                            :media-type="selectedMedia[0]?.type || 'video'"
+                            :media-status="selectedMedia[0]?.status === 'processing' ? 'processing' : 'ready'"
+                            :caption="form.caption"
+                            :background-color="mediaEdgeColor"
+                        />
 
                         <!-- Facebook Story Preview -->
-                        <div
+                        <FacebookStoryPreview
                             v-else-if="previewPlatform === 'facebook_story'"
-                            class="max-w-[280px] mx-auto rounded-2xl overflow-hidden aspect-[9/16] relative transition-colors duration-300"
-                            :style="{ backgroundColor: mediaEdgeColor }"
-                        >
-                            <!-- Processing state -->
-                            <div
-                                v-if="selectedMedia[0]?.status === 'processing'"
-                                class="w-full h-full flex flex-col items-center justify-center"
-                            >
-                                <svg class="w-12 h-12 text-gray-400 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/>
-                                </svg>
-                                <span class="text-gray-400 text-sm mt-2">Processing video...</span>
-                            </div>
-                            <!-- Video playing inline -->
-                            <video
-                                v-else-if="isPlayingVideo && selectedMedia[0]?.type === 'video'"
-                                :src="selectedMedia[0].url"
-                                class="w-full h-full object-cover"
-                                autoplay
-                                controls
-                                @click.stop
-                                @ended="isPlayingVideo = false"
-                            />
-                            <!-- Image/thumbnail -->
-                            <img
-                                v-else-if="selectedMedia[0]"
-                                :src="selectedMedia[0].thumbnail_url || selectedMedia[0].url"
-                                class="w-full h-full object-cover"
-                            />
-                            <div v-else class="w-full h-full flex items-center justify-center text-gray-500">
-                                No image selected
-                            </div>
-                            <!-- Video play button -->
-                            <button
-                                v-if="selectedMedia[0]?.type === 'video' && !isPlayingVideo && selectedMedia[0]?.status !== 'processing'"
-                                @click="isPlayingVideo = true"
-                                class="absolute inset-0 flex items-center justify-center z-10"
-                            >
-                                <div class="w-16 h-16 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors">
-                                    <svg class="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M8 5v14l11-7z" />
-                                    </svg>
-                                </div>
-                            </button>
-                            <!-- Top gradient overlay -->
-                            <div class="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-black/60 to-transparent pointer-events-none"></div>
-                            <!-- Progress bar -->
-                            <div class="absolute top-2 left-2 right-2 h-0.5 bg-white/30 rounded-full overflow-hidden">
-                                <div class="h-full w-1/2 bg-white rounded-full"></div>
-                            </div>
-                            <!-- Header -->
-                            <div class="absolute top-4 left-0 right-0 px-3 flex items-center justify-between">
-                                <div class="flex items-center">
-                                    <div class="p-0.5 rounded-full bg-blue-500">
-                                        <div v-if="selectedBrand?.logo_flat_url" class="w-10 h-10 rounded-full overflow-hidden border-2 border-black bg-white">
-                                            <img :src="selectedBrand.logo_flat_url" :alt="selectedBrand.name" class="w-full h-full object-cover" />
-                                        </div>
-                                        <div v-else class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold border-2 border-black">
-                                            {{ facebookDisplayName.charAt(0) }}
-                                        </div>
-                                    </div>
-                                    <div class="ml-2">
-                                        <span class="text-white text-sm font-semibold block">{{ facebookDisplayName }}</span>
-                                        <span class="text-white/60 text-xs">3h ago</span>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
-                                    </svg>
-                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </div>
-                            </div>
-                            <!-- Bottom black bar -->
-                            <div class="absolute bottom-0 left-0 right-0 bg-black px-3 py-2">
-                                <div class="flex items-center gap-2">
-                                    <!-- Create story circle button - dashed circle with plus -->
-                                    <button class="w-9 h-9 bg-transparent flex items-center justify-center shrink-0">
-                                        <svg class="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                                            <!-- Dashed circle segments -->
-                                            <path d="M12 2a10 10 0 0 1 7.07 2.93" />
-                                            <path d="M21.07 9a10 10 0 0 1 0 6" />
-                                            <path d="M19.07 19.07A10 10 0 0 1 12 22" />
-                                            <path d="M5 19.07A10 10 0 0 1 2.93 12" />
-                                            <path d="M2.93 9A10 10 0 0 1 5 4.93" />
-                                            <!-- Plus sign -->
-                                            <path d="M12 8v8M8 12h8" />
-                                        </svg>
-                                    </button>
-                                    <!-- Send message input -->
-                                    <div class="flex-1 bg-zinc-800 rounded-full px-3 py-1.5">
-                                        <span class="text-zinc-400 text-xs">Send message...</span>
-                                    </div>
-                                    <!-- Visible reactions - Facebook style -->
-                                    <div class="flex items-center shrink-0 -space-x-1">
-                                        <!-- Like - Blue circle with thumbs up -->
-                                        <div class="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center">
-                                            <svg class="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="currentColor">
-                                                <path d="M2 20h2c.55 0 1-.45 1-1v-9c0-.55-.45-1-1-1H2v11zm19.83-7.12c.11-.25.17-.52.17-.8V11c0-1.1-.9-2-2-2h-5.5l.92-4.65c.05-.22.02-.46-.08-.66-.23-.45-.52-.86-.88-1.22L14 2 7.59 8.41C7.21 8.79 7 9.3 7 9.83v7.84C7 18.95 8.05 20 9.34 20h8.11c.7 0 1.36-.37 1.72-.97l2.66-6.15z"/>
-                                            </svg>
-                                        </div>
-                                        <!-- Love - Red circle with heart -->
-                                        <div class="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center">
-                                            <svg class="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="currentColor">
-                                                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                                            </svg>
-                                        </div>
-                                        <!-- Haha - Yellow circle with laughing face -->
-                                        <div class="w-6 h-6 rounded-full bg-yellow-400 flex items-center justify-center text-xs">
-                                            😆
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                            :brand-name="facebookDisplayName"
+                            :brand-logo-url="selectedBrand?.logo_flat_url"
+                            :media-url="selectedMedia[0]?.url"
+                            :thumbnail-url="selectedMedia[0]?.thumbnail_url"
+                            :media-type="selectedMedia[0]?.type || 'image'"
+                            :media-status="selectedMedia[0]?.status === 'processing' ? 'processing' : 'ready'"
+                            :background-color="mediaEdgeColor"
+                        />
                     </div>
                     </div>
 

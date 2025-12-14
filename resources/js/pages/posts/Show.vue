@@ -6,6 +6,15 @@ import { postApi, commentApi, brandApi } from '@/services/api';
 import { useAuthStore } from '@/stores/auth';
 import html2canvas from 'html2canvas-pro';
 import axios from 'axios';
+import { validatePost } from '@/utils/platformValidation';
+import {
+    InstagramFeedPreview,
+    FacebookFeedPreview,
+    InstagramStoryPreview,
+    InstagramReelPreview,
+    FacebookStoryPreview,
+    FacebookReelPreview
+} from '@/components/mockups';
 
 const route = useRoute();
 const router = useRouter();
@@ -52,6 +61,13 @@ const truncatedCaption = computed(() => {
     if (!post.value?.caption) return '';
     if (post.value.caption.length <= 125 || showFullCaption.value) return post.value.caption;
     return post.value.caption.substring(0, 125) + '...';
+});
+
+// Platform validation
+const validation = computed(() => {
+    if (!post.value) return { errors: [], warnings: [] };
+    const media = post.value.media?.length > 0 ? post.value.media[0] : null;
+    return validatePost(post.value.platforms || [], media, post.value.caption);
 });
 
 const fetchPost = async () => {
@@ -198,6 +214,53 @@ const formatDate = (dateString) => {
 const mockupRef = ref(null);
 const exporting = ref(false);
 
+// Convert an image URL to a data URL to avoid CORS issues with html2canvas
+const imageToDataUrl = async (url) => {
+    if (!url) return null;
+    try {
+        // Check if this is a media URL that we can proxy through the API
+        const mediaMatch = url.match(/\/storage\/brands\/\d+\/media\/([^/]+)/);
+        if (mediaMatch && post.value?.media) {
+            // Find the media by matching the filename
+            const filename = mediaMatch[1];
+            const media = post.value.media.find(m => m.url.includes(filename));
+            if (media) {
+                // Use the stream API endpoint to fetch via the authenticated API
+                const response = await axios.get(`/api/media/${media.id}/stream`, {
+                    responseType: 'blob'
+                });
+                return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.readAsDataURL(response.data);
+                });
+            }
+        }
+        // Fallback: try direct fetch
+        const response = await fetch(url);
+        const blob = await response.blob();
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(blob);
+        });
+    } catch (err) {
+        console.warn('Failed to convert image to data URL:', url, err);
+        return null;
+    }
+};
+
+// Create a safe filename from text
+const slugify = (text) => {
+    return text
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .trim()
+        .substring(0, 50);
+};
+
 const exportAsJpeg = async () => {
     if (exporting.value) return;
 
@@ -212,6 +275,24 @@ const exportAsJpeg = async () => {
         // Wait a tick for Vue to finish any pending updates
         await new Promise(resolve => setTimeout(resolve, 100));
 
+        // Convert all images in the mockup to data URLs to avoid CORS issues
+        const images = mockupRef.value.querySelectorAll('img');
+        const originalSrcs = new Map();
+
+        await Promise.all(Array.from(images).map(async (img) => {
+            const originalSrc = img.src;
+            if (originalSrc && !originalSrc.startsWith('data:')) {
+                originalSrcs.set(img, originalSrc);
+                const dataUrl = await imageToDataUrl(originalSrc);
+                if (dataUrl) {
+                    img.src = dataUrl;
+                }
+            }
+        }));
+
+        // Wait for images to update in the DOM
+        await new Promise(resolve => setTimeout(resolve, 50));
+
         const canvas = await html2canvas(mockupRef.value, {
             backgroundColor: '#ffffff',
             scale: 2,
@@ -220,9 +301,16 @@ const exportAsJpeg = async () => {
             logging: false,
         });
 
+        // Restore original image sources
+        originalSrcs.forEach((src, img) => {
+            img.src = src;
+        });
+
         const link = document.createElement('a');
         const platformName = activePreview.value.replace(/_/g, '-');
-        link.download = `${post.value.brand?.name || 'post'}-${platformName}-${Date.now()}.jpg`;
+        const postTitle = post.value.title ? slugify(post.value.title) : 'post';
+        const brandName = post.value.brand?.name ? slugify(post.value.brand.name) : 'brand';
+        link.download = `${brandName}-${postTitle}-${platformName}.jpg`;
         link.href = canvas.toDataURL('image/jpeg', 0.95);
         document.body.appendChild(link);
         link.click();
@@ -337,109 +425,73 @@ onMounted(fetchPost);
                                 </div>
 
                                 <!-- Instagram Feed Preview -->
-                                <div
-                                    v-if="activePreview.includes('instagram_feed')"
-                                    ref="mockupRef"
-                                    class="max-w-sm mx-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden"
-                                >
-                                    <div class="flex items-center p-3">
-                                        <div v-if="post.brand?.logo_flat_url" class="w-8 h-8 rounded-full overflow-hidden">
-                                            <img :src="post.brand.logo_flat_url" :alt="post.brand.name" class="w-full h-full object-cover" />
-                                        </div>
-                                        <div v-else class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
-                                            {{ post.brand?.name?.charAt(0) || 'B' }}
-                                        </div>
-                                        <div class="ml-3">
-                                            <p class="text-sm font-semibold dark:text-white">{{ post.brand?.name }}</p>
-                                        </div>
-                                    </div>
-                                    <div class="aspect-square bg-gray-100 dark:bg-gray-700">
-                                        <img
-                                            v-if="post.media?.[0]"
-                                            :src="post.media[0].url"
-                                            class="w-full h-full object-cover"
-                                        />
-                                    </div>
-                                    <div class="p-3">
-                                        <div class="flex gap-4 mb-2">
-                                            <svg class="w-6 h-6 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                                            </svg>
-                                            <svg class="w-6 h-6 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                            </svg>
-                                        </div>
-                                        <p class="text-sm dark:text-gray-300">
-                                            <span class="font-semibold dark:text-white">{{ post.brand?.name }}</span>
-                                            <span class="whitespace-pre-wrap"> {{ truncatedCaption }}</span>
-                                            <button
-                                                v-if="post.caption?.length > 125"
-                                                @click="showFullCaption = !showFullCaption"
-                                                class="text-gray-500 dark:text-gray-400 ml-1"
-                                            >
-                                                {{ showFullCaption ? 'less' : 'more' }}
-                                            </button>
-                                        </p>
-                                    </div>
+                                <div v-if="activePreview.includes('instagram_feed')" ref="mockupRef">
+                                    <InstagramFeedPreview
+                                        :brand-name="post.brand?.instagram_handle || post.brand?.name || 'Brand Name'"
+                                        :brand-logo-url="post.brand?.logo_flat_url"
+                                        :media-url="post.media?.[0]?.url"
+                                        :thumbnail-url="post.media?.[0]?.thumbnail_url"
+                                        :media-type="post.media?.[0]?.type || 'image'"
+                                        :caption="post.caption"
+                                    />
                                 </div>
 
                                 <!-- Facebook Feed Preview -->
-                                <div
-                                    v-else-if="activePreview.includes('facebook_feed')"
-                                    ref="mockupRef"
-                                    class="max-w-sm mx-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden"
-                                >
-                                    <div class="flex items-center p-3">
-                                        <div v-if="post.brand?.logo_flat_url" class="w-10 h-10 rounded-full overflow-hidden">
-                                            <img :src="post.brand.logo_flat_url" :alt="post.brand.name" class="w-full h-full object-cover" />
-                                        </div>
-                                        <div v-else class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">
-                                            {{ post.brand?.name?.charAt(0) || 'B' }}
-                                        </div>
-                                        <div class="ml-3">
-                                            <p class="text-sm font-semibold dark:text-white">{{ post.brand?.name }}</p>
-                                            <p class="text-xs text-gray-500 dark:text-gray-400">Just now</p>
-                                        </div>
-                                    </div>
-                                    <div class="px-3 pb-2">
-                                        <p class="text-sm whitespace-pre-wrap dark:text-gray-300">{{ post.caption }}</p>
-                                    </div>
-                                    <div class="bg-gray-100 dark:bg-gray-700">
-                                        <img
-                                            v-if="post.media?.[0]"
-                                            :src="post.media[0].url"
-                                            class="w-full"
-                                        />
-                                    </div>
-                                    <div class="p-3 border-t border-gray-200 dark:border-gray-600 flex justify-around">
-                                        <span class="text-gray-500 dark:text-gray-400 text-sm">Like</span>
-                                        <span class="text-gray-500 dark:text-gray-400 text-sm">Comment</span>
-                                        <span class="text-gray-500 dark:text-gray-400 text-sm">Share</span>
-                                    </div>
+                                <div v-else-if="activePreview.includes('facebook_feed')" ref="mockupRef">
+                                    <FacebookFeedPreview
+                                        :brand-name="post.brand?.facebook_page_name || post.brand?.name || 'Brand Name'"
+                                        :brand-logo-url="post.brand?.logo_flat_url"
+                                        :media-url="post.media?.[0]?.url"
+                                        :thumbnail-url="post.media?.[0]?.thumbnail_url"
+                                        :media-type="post.media?.[0]?.type || 'image'"
+                                        :caption="post.caption"
+                                    />
                                 </div>
 
-                                <!-- Story Preview -->
-                                <div
-                                    v-else
-                                    ref="mockupRef"
-                                    class="max-w-[280px] mx-auto bg-black rounded-2xl overflow-hidden aspect-[9/16] relative"
-                                >
-                                    <img
-                                        v-if="post.media?.[0]"
-                                        :src="post.media[0].url"
-                                        class="w-full h-full object-cover"
+                                <!-- Instagram Story Preview -->
+                                <div v-else-if="activePreview.includes('instagram_story')" ref="mockupRef">
+                                    <InstagramStoryPreview
+                                        :brand-name="post.brand?.instagram_handle || post.brand?.name || 'Brand Name'"
+                                        :brand-logo-url="post.brand?.logo_flat_url"
+                                        :media-url="post.media?.[0]?.url"
+                                        :thumbnail-url="post.media?.[0]?.thumbnail_url"
+                                        :media-type="post.media?.[0]?.type || 'image'"
                                     />
-                                    <div class="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/50 to-transparent">
-                                        <div class="flex items-center">
-                                            <div v-if="post.brand?.logo_flat_url" class="w-8 h-8 rounded-full overflow-hidden">
-                                                <img :src="post.brand.logo_flat_url" :alt="post.brand.name" class="w-full h-full object-cover" />
-                                            </div>
-                                            <div v-else class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
-                                                {{ post.brand?.name?.charAt(0) || 'B' }}
-                                            </div>
-                                            <span class="ml-2 text-white text-sm font-medium">{{ post.brand?.name }}</span>
-                                        </div>
-                                    </div>
+                                </div>
+
+                                <!-- Instagram Reel Preview -->
+                                <div v-else-if="activePreview.includes('instagram_reel')" ref="mockupRef">
+                                    <InstagramReelPreview
+                                        :brand-name="post.brand?.instagram_handle || post.brand?.name || 'Brand Name'"
+                                        :brand-logo-url="post.brand?.logo_flat_url"
+                                        :media-url="post.media?.[0]?.url"
+                                        :thumbnail-url="post.media?.[0]?.thumbnail_url"
+                                        :media-type="post.media?.[0]?.type || 'video'"
+                                        :caption="post.caption"
+                                    />
+                                </div>
+
+                                <!-- Facebook Story Preview -->
+                                <div v-else-if="activePreview.includes('facebook_story')" ref="mockupRef">
+                                    <FacebookStoryPreview
+                                        :brand-name="post.brand?.facebook_page_name || post.brand?.name || 'Brand Name'"
+                                        :brand-logo-url="post.brand?.logo_flat_url"
+                                        :media-url="post.media?.[0]?.url"
+                                        :thumbnail-url="post.media?.[0]?.thumbnail_url"
+                                        :media-type="post.media?.[0]?.type || 'image'"
+                                    />
+                                </div>
+
+                                <!-- Facebook Reel Preview -->
+                                <div v-else ref="mockupRef">
+                                    <FacebookReelPreview
+                                        :brand-name="post.brand?.facebook_page_name || post.brand?.name || 'Brand Name'"
+                                        :brand-logo-url="post.brand?.logo_flat_url"
+                                        :media-url="post.media?.[0]?.url"
+                                        :thumbnail-url="post.media?.[0]?.thumbnail_url"
+                                        :media-type="post.media?.[0]?.type || 'video'"
+                                        :caption="post.caption"
+                                    />
                                 </div>
 
                                 <!-- Export Button -->
@@ -458,6 +510,39 @@ onMounted(fetchPost);
                                         </svg>
                                         {{ exporting ? 'Exporting...' : 'Export as JPEG' }}
                                     </button>
+                                </div>
+
+                                <!-- Platform Warnings -->
+                                <div v-if="validation.errors.length > 0 || validation.warnings.length > 0" class="mt-4 space-y-2">
+                                    <!-- Errors -->
+                                    <div
+                                        v-for="(error, index) in validation.errors"
+                                        :key="'error-' + index"
+                                        class="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+                                    >
+                                        <svg class="w-5 h-5 text-red-500 dark:text-red-400 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                                        </svg>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-medium text-red-800 dark:text-red-300">{{ error.platformName }}</p>
+                                            <p class="text-sm text-red-600 dark:text-red-400">{{ error.message }}</p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Warnings -->
+                                    <div
+                                        v-for="(warning, index) in validation.warnings"
+                                        :key="'warning-' + index"
+                                        class="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg"
+                                    >
+                                        <svg class="w-5 h-5 text-amber-500 dark:text-amber-400 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                        </svg>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-medium text-amber-800 dark:text-amber-300">{{ warning.platformName }}</p>
+                                            <p class="text-sm text-amber-600 dark:text-amber-400">{{ warning.message }}</p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 

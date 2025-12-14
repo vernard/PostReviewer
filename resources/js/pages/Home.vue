@@ -8,6 +8,14 @@ import { extractEdgeColor } from '@/composables/useEdgeColor';
 import { validatePost, getCaptionStatus } from '@/utils/platformValidation';
 import { homepageApi } from '@/services/api';
 import html2canvas from 'html2canvas-pro';
+import {
+    InstagramFeedPreview,
+    FacebookFeedPreview,
+    InstagramStoryPreview,
+    InstagramReelPreview,
+    FacebookStoryPreview,
+    FacebookReelPreview
+} from '@/components/mockups';
 
 const { isDark, toggle: toggleDarkMode } = useDarkMode();
 const authStore = useAuthStore();
@@ -52,7 +60,6 @@ const platforms = [
     { id: 'instagram_story', name: 'Instagram Story', icon: 'IG' },
     { id: 'instagram_reel', name: 'Instagram Reel', icon: 'IG' },
 ];
-const isPlayingVideo = ref(false);
 const videoDuration = ref(0);
 const videoThumbnail = ref(null);
 const brandName = ref('');
@@ -74,10 +81,6 @@ watch(previewUrl, async (url) => {
     }
 });
 
-// Reset video playback when platform changes
-watch(selectedPlatform, () => {
-    isPlayingVideo.value = false;
-});
 const brandLogo = ref(null);
 const brandLogoUrl = ref(null);
 const imageDimensions = ref({ width: 0, height: 0 });
@@ -122,22 +125,6 @@ const brandInitials = computed(() => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 });
 
-const captionExpanded = ref(false);
-const captionMaxLength = 125;
-
-const displayCaption = computed(() => caption.value || 'Your caption here...');
-const isCaptionLong = computed(() => caption.value.length > captionMaxLength);
-const truncatedCaption = computed(() => {
-    if (!caption.value) return 'Your caption here...';
-    if (captionExpanded.value || caption.value.length <= captionMaxLength) {
-        return caption.value;
-    }
-    return caption.value.substring(0, captionMaxLength).trim() + '...';
-});
-
-const toggleCaption = () => {
-    captionExpanded.value = !captionExpanded.value;
-};
 
 const processFile = (file) => {
     selectedFile.value = file;
@@ -200,7 +187,6 @@ const clearPreview = () => {
     previewUrl.value = null;
     caption.value = '';
     imageDimensions.value = { width: 0, height: 0 };
-    isPlayingVideo.value = false;
     videoDuration.value = 0;
     videoThumbnail.value = null;
 };
@@ -508,594 +494,71 @@ const exportAsJpeg = async () => {
                         <div class="bg-gray-100 dark:bg-gray-700 rounded-none sm:rounded-lg p-2 sm:p-4 flex items-center justify-center">
                             <!-- Mockup Container - scales down on very small screens -->
                             <div ref="mockupRef" class="max-[400px]:scale-90">
-                            <!-- Instagram Feed Mockup -->
-                            <div v-if="selectedPlatform === 'instagram_feed'" class="bg-white rounded-lg shadow-lg w-[280px]">
-                                <!-- Header -->
-                                <div class="flex items-center gap-3 p-3 border-b">
-                                    <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-500 p-0.5">
-                                        <div class="w-full h-full bg-white rounded-full flex items-center justify-center overflow-hidden">
-                                            <img v-if="brandLogoUrl" :src="brandLogoUrl" class="w-full h-full object-cover" />
-                                            <span v-else class="text-xs font-bold text-gray-800">{{ brandInitials }}</span>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <p class="text-sm font-semibold text-gray-900">{{ displayBrandName }}</p>
-                                        <p class="text-xs text-gray-500">Sponsored</p>
-                                    </div>
-                                    <svg class="ml-auto w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
-                                        <circle cx="12" cy="5" r="1.5" />
-                                        <circle cx="12" cy="12" r="1.5" />
-                                        <circle cx="12" cy="19" r="1.5" />
-                                    </svg>
-                                </div>
-                                <!-- Image -->
-                                <div class="w-full aspect-square overflow-hidden flex items-center justify-center relative transition-colors duration-300" :style="{ backgroundColor: edgeColor }">
-                                    <img v-if="previewUrl && !isVideo" :src="previewUrl" class="max-w-full max-h-full object-contain" />
-                                    <!-- Video playing inline -->
-                                    <video
-                                        v-else-if="previewUrl && isVideo && isPlayingVideo"
-                                        :src="previewUrl"
-                                        class="w-full h-full object-contain"
-                                        autoplay
-                                        controls
-                                        @ended="isPlayingVideo = false"
-                                    />
-                                    <!-- Video thumbnail with play button -->
-                                    <template v-else-if="previewUrl && isVideo">
-                                        <img v-if="videoThumbnail" :src="videoThumbnail" class="max-w-full max-h-full object-contain" />
-                                        <div v-else class="w-full h-full bg-gray-900 flex items-center justify-center">
-                                            <svg class="w-8 h-8 text-gray-600 animate-spin" fill="none" viewBox="0 0 24 24">
-                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
-                                        </div>
-                                        <button
-                                            @click="isPlayingVideo = true"
-                                            class="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors z-10"
-                                        >
-                                            <div class="w-16 h-16 rounded-full bg-black/60 flex items-center justify-center">
-                                                <svg class="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
-                                                    <path d="M8 5v14l11-7z" />
-                                                </svg>
-                                            </div>
-                                        </button>
-                                        <!-- Duration badge -->
-                                    </template>
-                                    <!-- Sample placeholder -->
-                                    <div v-else class="w-full h-full bg-gradient-to-br from-pink-400 via-purple-400 to-indigo-400 flex items-center justify-center">
-                                        <div class="text-center text-white">
-                                            <svg class="mx-auto h-16 w-16 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                            </svg>
-                                            <p class="mt-2 text-sm font-medium opacity-90">Your image here</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <!-- Actions -->
-                                <div class="p-3">
-                                    <div class="flex items-center gap-4">
-                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                                        </svg>
-                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                        </svg>
-                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                                        </svg>
-                                        <svg class="w-6 h-6 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                                        </svg>
-                                    </div>
-                                    <p class="text-sm font-semibold mt-2">1,234 likes</p>
-                                    <p class="text-sm mt-1">
-                                        <span class="font-semibold">{{ displayBrandName }}</span>{{ ' ' }}<span class="whitespace-pre-wrap">{{ truncatedCaption }}</span>
-                                        <button
-                                            v-if="isCaptionLong && !captionExpanded"
-                                            @click="toggleCaption"
-                                            class="text-gray-500 hover:text-gray-700"
-                                        >more</button>
-                                        <button
-                                            v-if="isCaptionLong && captionExpanded"
-                                            @click="toggleCaption"
-                                            class="text-gray-500 hover:text-gray-700 block"
-                                        >less</button>
-                                    </p>
-                                    <p class="text-xs text-gray-500 mt-1">2 HOURS AGO</p>
-                                </div>
-                            </div>
-
-                            <!-- Facebook Feed Mockup -->
-                            <div v-else-if="selectedPlatform === 'facebook_feed'" class="bg-white rounded-lg shadow-lg w-[280px]">
-                                <!-- Header -->
-                                <div class="flex items-center gap-3 p-3">
-                                    <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center overflow-hidden relative">
-                                        <img v-if="brandLogoUrl" :src="brandLogoUrl" class="w-full h-full object-cover" />
-                                        <div v-if="brandLogoUrl" class="absolute inset-0 rounded-full" style="box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1)"></div>
-                                        <span v-else class="text-white font-bold bg-blue-600 w-full h-full flex items-center justify-center">{{ brandInitials }}</span>
-                                    </div>
-                                    <div>
-                                        <p class="text-sm font-semibold text-gray-900">{{ displayBrandNameFb }}</p>
-                                        <div class="flex items-center text-xs text-gray-500">
-                                            <span>2h</span>
-                                            <span class="mx-1">·</span>
-                                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
-                                            </svg>
-                                        </div>
-                                    </div>
-                                    <svg class="ml-auto w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
-                                        <circle cx="12" cy="5" r="1.5" />
-                                        <circle cx="12" cy="12" r="1.5" />
-                                        <circle cx="12" cy="19" r="1.5" />
-                                    </svg>
-                                </div>
-                                <!-- Caption -->
-                                <p class="px-3 pb-2 text-sm text-gray-900">
-                                    <span class="whitespace-pre-wrap">{{ truncatedCaption }}</span>
-                                    <button
-                                        v-if="isCaptionLong && !captionExpanded"
-                                        @click="toggleCaption"
-                                        class="text-blue-600 hover:underline ml-1"
-                                    >See more</button>
-                                    <button
-                                        v-if="isCaptionLong && captionExpanded"
-                                        @click="toggleCaption"
-                                        class="text-blue-600 hover:underline block"
-                                    >See less</button>
-                                </p>
-                                <!-- Image -->
-                                <div
-                                    class="w-full aspect-square flex items-center justify-center transition-colors duration-300 relative"
-                                    :style="{ backgroundColor: edgeColor }"
-                                >
-                                    <img
-                                        v-if="previewUrl && !isVideo"
-                                        :src="previewUrl"
-                                        class="max-h-full max-w-full object-contain"
-                                    />
-                                    <!-- Video playing inline -->
-                                    <video
-                                        v-else-if="previewUrl && isVideo && isPlayingVideo"
-                                        :src="previewUrl"
-                                        class="max-h-full max-w-full object-contain"
-                                        autoplay
-                                        controls
-                                        @ended="isPlayingVideo = false"
-                                    />
-                                    <!-- Video thumbnail with play button -->
-                                    <template v-else-if="previewUrl && isVideo">
-                                        <img v-if="videoThumbnail" :src="videoThumbnail" class="max-h-full max-w-full object-contain" />
-                                        <div v-else class="w-full h-full bg-gray-900 flex items-center justify-center">
-                                            <svg class="w-8 h-8 text-gray-600 animate-spin" fill="none" viewBox="0 0 24 24">
-                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
-                                        </div>
-                                        <button
-                                            @click="isPlayingVideo = true"
-                                            class="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors z-10"
-                                        >
-                                            <div class="w-16 h-16 rounded-full bg-black/60 flex items-center justify-center">
-                                                <svg class="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
-                                                    <path d="M8 5v14l11-7z" />
-                                                </svg>
-                                            </div>
-                                        </button>
-                                        <!-- Duration badge -->
-                                    </template>
-                                    <!-- Sample placeholder -->
-                                    <div v-else class="w-full h-full bg-gradient-to-br from-blue-400 via-blue-500 to-indigo-500 flex items-center justify-center">
-                                        <div class="text-center text-white">
-                                            <svg class="mx-auto h-16 w-16 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                            </svg>
-                                            <p class="mt-2 text-sm font-medium opacity-90">Your image here</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <!-- Stats -->
-                                <div class="px-2 py-1.5 flex items-center justify-between text-xs text-gray-500 border-b">
-                                    <div class="flex items-center">
-                                        <div class="flex -space-x-1">
-                                            <div class="w-4 h-4 rounded-full bg-blue-600 flex items-center justify-center">
-                                                <svg class="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                                                    <path d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
-                                                </svg>
-                                            </div>
-                                            <div class="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center">
-                                                <svg class="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                                                    <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                                                </svg>
-                                            </div>
-                                        </div>
-                                        <span class="ml-1.5">1.2K</span>
-                                    </div>
-                                    <span>42 comments · 18 shares</span>
-                                </div>
-                                <!-- Actions -->
-                                <div class="px-2 py-1 flex justify-around">
-                                    <button class="flex items-center gap-1.5 py-1.5 px-2 rounded hover:bg-gray-100 text-gray-600 text-xs font-medium">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
-                                        </svg>
-                                        Like
-                                    </button>
-                                    <button class="flex items-center gap-1.5 py-1.5 px-2 rounded hover:bg-gray-100 text-gray-600 text-xs font-medium">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                        </svg>
-                                        Comment
-                                    </button>
-                                    <button class="flex items-center gap-1.5 py-1.5 px-2 rounded hover:bg-gray-100 text-gray-600 text-xs font-medium">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                                        </svg>
-                                        Share
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- Instagram Story Mockup -->
-                            <div v-else-if="selectedPlatform === 'instagram_story'" class="bg-black rounded-2xl shadow-lg overflow-hidden aspect-[9/16] w-[280px] relative">
-                                <!-- Background image/video -->
-                                <img v-if="previewUrl && !isVideo" :src="previewUrl" class="absolute inset-0 w-full h-full object-cover" />
-                                <!-- Video playing inline -->
-                                <video
-                                    v-else-if="previewUrl && isVideo && isPlayingVideo"
-                                    :src="previewUrl"
-                                    class="absolute inset-0 w-full h-full object-cover"
-                                    autoplay
-                                    @ended="isPlayingVideo = false"
+                                <!-- Instagram Feed -->
+                                <InstagramFeedPreview
+                                    v-if="selectedPlatform === 'instagram_feed'"
+                                    :brand-name="displayBrandName"
+                                    :brand-logo-url="brandLogoUrl"
+                                    :media-url="previewUrl"
+                                    :thumbnail-url="videoThumbnail"
+                                    :media-type="isVideo ? 'video' : 'image'"
+                                    :caption="caption"
+                                    :background-color="edgeColor"
                                 />
-                                <!-- Video thumbnail with play button -->
-                                <template v-else-if="previewUrl && isVideo">
-                                    <img v-if="videoThumbnail" :src="videoThumbnail" class="absolute inset-0 w-full h-full object-cover" />
-                                    <div v-else class="absolute inset-0 bg-gray-900 flex items-center justify-center">
-                                        <svg class="w-8 h-8 text-gray-600 animate-spin" fill="none" viewBox="0 0 24 24">
-                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                    </div>
-                                    <button
-                                        @click="isPlayingVideo = true"
-                                        class="absolute inset-0 flex items-center justify-center z-10"
-                                    >
-                                        <div class="w-16 h-16 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors">
-                                            <svg class="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
-                                                <path d="M8 5v14l11-7z" />
-                                            </svg>
-                                        </div>
-                                    </button>
-                                    <!-- Duration badge -->
-                                </template>
-                                <div v-else class="absolute inset-0 bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center">
-                                    <div class="text-center text-white">
-                                        <svg class="mx-auto h-16 w-16 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                        </svg>
-                                        <p class="mt-2 text-sm font-medium opacity-90">Your story here</p>
-                                    </div>
-                                </div>
-                                <!-- Story Header -->
-                                <div class="absolute top-0 left-0 right-0 p-3 bg-gradient-to-b from-black/50 to-transparent">
-                                    <!-- Progress bar -->
-                                    <div class="w-full h-0.5 bg-white/30 rounded-full mb-3">
-                                        <div class="h-full w-1/3 bg-white rounded-full"></div>
-                                    </div>
-                                    <!-- Profile -->
-                                    <div class="flex items-center gap-2">
-                                        <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-500 p-0.5">
-                                            <div class="w-full h-full bg-white rounded-full flex items-center justify-center overflow-hidden">
-                                                <img v-if="brandLogoUrl" :src="brandLogoUrl" class="w-full h-full object-cover" />
-                                                <span v-else class="text-[10px] font-bold text-gray-800">{{ brandInitials }}</span>
-                                            </div>
-                                        </div>
-                                        <span class="text-white text-sm font-medium">{{ displayBrandName }}</span>
-                                        <span class="text-white/70 text-xs">2h</span>
-                                        <svg class="ml-auto w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                                            <circle cx="12" cy="5" r="1.5" />
-                                            <circle cx="12" cy="12" r="1.5" />
-                                            <circle cx="12" cy="19" r="1.5" />
-                                        </svg>
-                                    </div>
-                                </div>
-                                <!-- Story Footer -->
-                                <div class="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/50 to-transparent">
-                                    <div class="flex items-center gap-3">
-                                        <div class="flex-1 px-4 py-2 rounded-full border border-white/50 text-white/70 text-sm">
-                                            Send message
-                                        </div>
-                                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                                        </svg>
-                                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                                        </svg>
-                                    </div>
-                                </div>
-                            </div>
 
-                            <!-- Instagram Reel Mockup -->
-                            <div v-else-if="selectedPlatform === 'instagram_reel'" class="bg-black rounded-2xl shadow-lg overflow-hidden aspect-[9/16] w-[280px] relative">
-                                <!-- Background image/video -->
-                                <img v-if="previewUrl && !isVideo" :src="previewUrl" class="absolute inset-0 w-full h-full object-cover" />
-                                <!-- Video playing inline -->
-                                <video
-                                    v-else-if="previewUrl && isVideo && isPlayingVideo"
-                                    :src="previewUrl"
-                                    class="absolute inset-0 w-full h-full object-cover"
-                                    autoplay
-                                    @ended="isPlayingVideo = false"
+                                <!-- Facebook Feed -->
+                                <FacebookFeedPreview
+                                    v-else-if="selectedPlatform === 'facebook_feed'"
+                                    :brand-name="displayBrandNameFb"
+                                    :brand-logo-url="brandLogoUrl"
+                                    :media-url="previewUrl"
+                                    :thumbnail-url="videoThumbnail"
+                                    :media-type="isVideo ? 'video' : 'image'"
+                                    :caption="caption"
+                                    :background-color="edgeColor"
                                 />
-                                <!-- Video thumbnail with play button -->
-                                <template v-else-if="previewUrl && isVideo">
-                                    <img v-if="videoThumbnail" :src="videoThumbnail" class="absolute inset-0 w-full h-full object-cover" />
-                                    <div v-else class="absolute inset-0 bg-gray-900 flex items-center justify-center">
-                                        <svg class="w-8 h-8 text-gray-600 animate-spin" fill="none" viewBox="0 0 24 24">
-                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                    </div>
-                                    <button
-                                        @click="isPlayingVideo = true"
-                                        class="absolute inset-0 flex items-center justify-center z-10"
-                                    >
-                                        <div class="w-16 h-16 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors">
-                                            <svg class="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
-                                                <path d="M8 5v14l11-7z" />
-                                            </svg>
-                                        </div>
-                                    </button>
-                                    <!-- Duration badge -->
-                                </template>
-                                <div v-else class="absolute inset-0 bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 flex items-center justify-center">
-                                    <div class="text-center text-white">
-                                        <svg class="mx-auto h-16 w-16 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                        </svg>
-                                        <p class="mt-2 text-sm font-medium opacity-90">Your reel here</p>
-                                    </div>
-                                </div>
-                                <!-- Bottom gradient overlay -->
-                                <div class="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/70 to-transparent pointer-events-none"></div>
-                                <!-- Right sidebar actions -->
-                                <div class="absolute right-3 bottom-24 flex flex-col items-center gap-4 drop-shadow-lg">
-                                    <div class="flex flex-col items-center">
-                                        <svg class="w-7 h-7 text-white drop-shadow-md" fill="currentColor" viewBox="0 0 24 24">
-                                            <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                                        </svg>
-                                        <span class="text-white text-xs mt-1 drop-shadow-md">1.2K</span>
-                                    </div>
-                                    <div class="flex flex-col items-center">
-                                        <svg class="w-7 h-7 text-white drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                        </svg>
-                                        <span class="text-white text-xs mt-1 drop-shadow-md">48</span>
-                                    </div>
-                                    <div class="flex flex-col items-center">
-                                        <svg class="w-7 h-7 text-white drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                                        </svg>
-                                    </div>
-                                    <div class="flex flex-col items-center">
-                                        <svg class="w-7 h-7 text-white drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
-                                        </svg>
-                                    </div>
-                                    <div class="w-7 h-7 rounded border-2 border-white overflow-hidden shadow-md">
-                                        <img v-if="brandLogoUrl" :src="brandLogoUrl" class="w-full h-full object-cover" />
-                                        <div v-else class="w-full h-full bg-gradient-to-br from-purple-500 to-pink-500"></div>
-                                    </div>
-                                </div>
-                                <!-- Bottom content -->
-                                <div class="absolute bottom-4 left-3 right-14">
-                                    <div class="flex items-center mb-2">
-                                        <div v-if="brandLogoUrl" class="w-8 h-8 rounded-full overflow-hidden">
-                                            <img :src="brandLogoUrl" :alt="displayBrandName" class="w-full h-full object-cover" />
-                                        </div>
-                                        <div v-else class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
-                                            {{ brandInitials }}
-                                        </div>
-                                        <span class="ml-2 text-white text-sm font-semibold">{{ displayBrandName }}</span>
-                                        <button class="ml-2 px-3 py-1 border border-white rounded text-white text-xs font-semibold">Follow</button>
-                                    </div>
-                                    <p class="text-white text-sm line-clamp-2">{{ truncatedCaption || 'Your caption here...' }}</p>
-                                    <!-- Audio bar -->
-                                    <div class="flex items-center mt-2">
-                                        <svg class="w-3 h-3 text-white mr-1" fill="currentColor" viewBox="0 0 24 24">
-                                            <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
-                                        </svg>
-                                        <span class="text-white text-xs">Original Audio</span>
-                                    </div>
-                                </div>
-                            </div>
 
-                            <!-- Facebook Reel Mockup -->
-                            <div v-else-if="selectedPlatform === 'facebook_reel'" class="bg-black rounded-2xl shadow-lg overflow-hidden aspect-[9/16] w-[280px] relative">
-                                <!-- Background image/video -->
-                                <img v-if="previewUrl && !isVideo" :src="previewUrl" class="absolute inset-0 w-full h-full object-cover" />
-                                <!-- Video playing inline -->
-                                <video
-                                    v-else-if="previewUrl && isVideo && isPlayingVideo"
-                                    :src="previewUrl"
-                                    class="absolute inset-0 w-full h-full object-cover"
-                                    autoplay
-                                    @ended="isPlayingVideo = false"
+                                <!-- Instagram Story -->
+                                <InstagramStoryPreview
+                                    v-else-if="selectedPlatform === 'instagram_story'"
+                                    :brand-name="displayBrandName"
+                                    :brand-logo-url="brandLogoUrl"
+                                    :media-url="previewUrl"
+                                    :thumbnail-url="videoThumbnail"
+                                    :media-type="isVideo ? 'video' : 'image'"
                                 />
-                                <!-- Video thumbnail with play button -->
-                                <template v-else-if="previewUrl && isVideo">
-                                    <img v-if="videoThumbnail" :src="videoThumbnail" class="absolute inset-0 w-full h-full object-cover" />
-                                    <div v-else class="absolute inset-0 bg-gray-900 flex items-center justify-center">
-                                        <svg class="w-8 h-8 text-gray-600 animate-spin" fill="none" viewBox="0 0 24 24">
-                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                    </div>
-                                    <button
-                                        @click="isPlayingVideo = true"
-                                        class="absolute inset-0 flex items-center justify-center z-10"
-                                    >
-                                        <div class="w-16 h-16 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors">
-                                            <svg class="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
-                                                <path d="M8 5v14l11-7z" />
-                                            </svg>
-                                        </div>
-                                    </button>
-                                    <!-- Duration badge -->
-                                </template>
-                                <div v-else class="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-500 flex items-center justify-center">
-                                    <div class="text-center text-white">
-                                        <svg class="mx-auto h-16 w-16 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                        </svg>
-                                        <p class="mt-2 text-sm font-medium opacity-90">Your reel here</p>
-                                    </div>
-                                </div>
-                                <!-- Bottom gradient overlay -->
-                                <div class="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/70 via-black/30 to-transparent pointer-events-none"></div>
-                                <!-- Right sidebar actions -->
-                                <div class="absolute right-3 bottom-24 flex flex-col items-center gap-5 drop-shadow-lg">
-                                    <!-- Like -->
-                                    <div class="flex flex-col items-center">
-                                        <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                                            <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-                                                <path d="M2 20h2c.55 0 1-.45 1-1v-9c0-.55-.45-1-1-1H2v11zm19.83-7.12c.11-.25.17-.52.17-.8V11c0-1.1-.9-2-2-2h-5.5l.92-4.65c.05-.22.02-.46-.08-.66-.23-.45-.52-.86-.88-1.22L14 2 7.59 8.41C7.21 8.79 7 9.3 7 9.83v7.84C7 18.95 8.05 20 9.34 20h8.11c.7 0 1.36-.37 1.72-.97l2.66-6.15z"/>
-                                            </svg>
-                                        </div>
-                                        <span class="text-white text-xs mt-1 font-medium drop-shadow-md">1.2K</span>
-                                    </div>
-                                    <!-- Comment -->
-                                    <div class="flex flex-col items-center">
-                                        <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                                            <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-                                                <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
-                                            </svg>
-                                        </div>
-                                        <span class="text-white text-xs mt-1 font-medium drop-shadow-md">48</span>
-                                    </div>
-                                    <!-- Share -->
-                                    <div class="flex flex-col items-center">
-                                        <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                                            <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-                                                <path d="M21.707 11.293l-8-8A1 1 0 0012 4v3.545A11.015 11.015 0 002 18.5V20a1 1 0 001.784.62 11.456 11.456 0 018.216-4.073V20a1 1 0 001.707.707l8-8a1 1 0 000-1.414z"/>
-                                            </svg>
-                                        </div>
-                                    </div>
-                                    <!-- Music/Audio -->
-                                    <div class="flex flex-col items-center">
-                                        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center border-2 border-white overflow-hidden">
-                                            <svg class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
-                                                <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
-                                            </svg>
-                                        </div>
-                                    </div>
-                                </div>
-                                <!-- Bottom content -->
-                                <div class="absolute bottom-4 left-3 right-14">
-                                    <!-- Profile + Follow -->
-                                    <div class="flex items-center mb-2">
-                                        <div v-if="brandLogoUrl" class="w-9 h-9 rounded-full overflow-hidden border-2 border-white">
-                                            <img :src="brandLogoUrl" :alt="displayBrandNameFb" class="w-full h-full object-cover" />
-                                        </div>
-                                        <div v-else class="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-bold border-2 border-white">
-                                            {{ brandInitials }}
-                                        </div>
-                                        <span class="ml-2 text-white text-sm font-semibold drop-shadow-md">{{ displayBrandNameFb }}</span>
-                                        <span class="mx-1 text-white/60">·</span>
-                                        <button class="text-white text-sm font-semibold drop-shadow-md">Follow</button>
-                                    </div>
-                                    <!-- Caption -->
-                                    <p class="text-white text-sm drop-shadow-md line-clamp-2 mb-2">{{ truncatedCaption || 'Your caption here...' }}</p>
-                                    <!-- Audio bar -->
-                                    <div class="flex items-center">
-                                        <svg class="w-4 h-4 text-white mr-2" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
-                                        </svg>
-                                        <span class="text-white text-xs drop-shadow-md">Original audio · {{ displayBrandNameFb }}</span>
-                                    </div>
-                                </div>
-                            </div>
 
-                            <!-- Facebook Story Mockup -->
-                            <div v-else class="bg-gray-900 rounded-2xl shadow-lg overflow-hidden aspect-[9/16] w-[280px] relative">
-                                <!-- Background image/video -->
-                                <img v-if="previewUrl && !isVideo" :src="previewUrl" class="absolute inset-0 w-full h-full object-cover" />
-                                <!-- Video playing inline -->
-                                <video
-                                    v-else-if="previewUrl && isVideo && isPlayingVideo"
-                                    :src="previewUrl"
-                                    class="absolute inset-0 w-full h-full object-cover"
-                                    autoplay
-                                    @ended="isPlayingVideo = false"
+                                <!-- Instagram Reel -->
+                                <InstagramReelPreview
+                                    v-else-if="selectedPlatform === 'instagram_reel'"
+                                    :brand-name="displayBrandName"
+                                    :brand-logo-url="brandLogoUrl"
+                                    :media-url="previewUrl"
+                                    :thumbnail-url="videoThumbnail"
+                                    :media-type="isVideo ? 'video' : 'image'"
+                                    :caption="caption"
                                 />
-                                <!-- Video thumbnail with play button -->
-                                <template v-else-if="previewUrl && isVideo">
-                                    <img v-if="videoThumbnail" :src="videoThumbnail" class="absolute inset-0 w-full h-full object-cover" />
-                                    <div v-else class="absolute inset-0 bg-gray-900 flex items-center justify-center">
-                                        <svg class="w-8 h-8 text-gray-600 animate-spin" fill="none" viewBox="0 0 24 24">
-                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                    </div>
-                                    <button
-                                        @click="isPlayingVideo = true"
-                                        class="absolute inset-0 flex items-center justify-center z-10"
-                                    >
-                                        <div class="w-16 h-16 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors">
-                                            <svg class="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
-                                                <path d="M8 5v14l11-7z" />
-                                            </svg>
-                                        </div>
-                                    </button>
-                                    <!-- Duration badge -->
-                                </template>
-                                <div v-else class="absolute inset-0 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 flex items-center justify-center">
-                                    <div class="text-center text-white">
-                                        <svg class="mx-auto h-16 w-16 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                        </svg>
-                                        <p class="mt-2 text-sm font-medium opacity-90">Your story here</p>
-                                    </div>
-                                </div>
-                                <!-- Story Header -->
-                                <div class="absolute top-0 left-0 right-0 p-3 bg-gradient-to-b from-black/50 to-transparent">
-                                    <!-- Progress bar -->
-                                    <div class="w-full h-0.5 bg-white/30 rounded-full mb-3">
-                                        <div class="h-full w-1/3 bg-white rounded-full"></div>
-                                    </div>
-                                    <!-- Profile -->
-                                    <div class="flex items-center gap-2">
-                                        <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center overflow-hidden border-2 border-blue-500">
-                                            <img v-if="brandLogoUrl" :src="brandLogoUrl" class="w-full h-full object-cover" />
-                                            <span v-else class="text-xs font-bold text-blue-600">{{ brandInitials }}</span>
-                                        </div>
-                                        <div>
-                                            <span class="text-white text-sm font-medium block">{{ displayBrandNameFb }}</span>
-                                            <span class="text-white/70 text-xs">2h ago</span>
-                                        </div>
-                                        <svg class="ml-auto w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                                            <circle cx="12" cy="5" r="1.5" />
-                                            <circle cx="12" cy="12" r="1.5" />
-                                            <circle cx="12" cy="19" r="1.5" />
-                                        </svg>
-                                    </div>
-                                </div>
-                                <!-- Story Footer -->
-                                <div class="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/50 to-transparent">
-                                    <div class="flex items-center gap-3">
-                                        <div class="flex-1 px-4 py-2 rounded-full border border-white/50 text-white/70 text-sm">
-                                            Reply...
-                                        </div>
-                                        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
-                                        </svg>
-                                        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                                        </svg>
-                                    </div>
-                                </div>
-                            </div>
+
+                                <!-- Facebook Reel -->
+                                <FacebookReelPreview
+                                    v-else-if="selectedPlatform === 'facebook_reel'"
+                                    :brand-name="displayBrandNameFb"
+                                    :brand-logo-url="brandLogoUrl"
+                                    :media-url="previewUrl"
+                                    :thumbnail-url="videoThumbnail"
+                                    :media-type="isVideo ? 'video' : 'image'"
+                                    :caption="caption"
+                                />
+
+                                <!-- Facebook Story -->
+                                <FacebookStoryPreview
+                                    v-else
+                                    :brand-name="displayBrandNameFb"
+                                    :brand-logo-url="brandLogoUrl"
+                                    :media-url="previewUrl"
+                                    :thumbnail-url="videoThumbnail"
+                                    :media-type="isVideo ? 'video' : 'image'"
+                                />
                             </div>
 
                         </div>
