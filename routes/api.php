@@ -46,6 +46,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Auth
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
+    Route::post('/user/switch-agency', [AuthController::class, 'switchAgency']);
 
     // Agency
     Route::get('/agency', [AgencyController::class, 'show']);
@@ -68,6 +69,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/media', [MediaController::class, 'index']);
     Route::post('/media', [MediaController::class, 'store']);
     Route::get('/media/{media}', [MediaController::class, 'show']);
+    Route::get('/media/{media}/stream', [MediaController::class, 'stream']);
     Route::delete('/media/{media}', [MediaController::class, 'destroy']);
 
     // Posts
@@ -110,5 +112,6 @@ Route::middleware(['auth:sanctum', 'super-admin'])->prefix('admin')->group(funct
     Route::get('/users', [AdminController::class, 'users']);
     Route::get('/agencies', [AdminController::class, 'agencies']);
     Route::put('/agencies/{agency}/quota', [AdminController::class, 'updateAgencyQuota']);
-    Route::post('/impersonate/{user}', [AdminController::class, 'impersonate']);
+    Route::post('/agencies/{agency}/join', [AdminController::class, 'joinAgency']);
+    Route::post('/agencies/{agency}/leave', [AdminController::class, 'leaveAgency']);
 });

@@ -37,9 +37,44 @@ class User extends Authenticatable
         ];
     }
 
+    /**
+     * The user's currently selected agency.
+     */
     public function agency(): BelongsTo
     {
         return $this->belongsTo(Agency::class);
+    }
+
+    /**
+     * All agencies the user belongs to.
+     */
+    public function agencies(): BelongsToMany
+    {
+        return $this->belongsToMany(Agency::class)
+            ->withPivot('role')
+            ->withTimestamps();
+    }
+
+    /**
+     * Get the user's role within a specific agency.
+     */
+    public function roleInAgency(?Agency $agency): ?string
+    {
+        if (!$agency) {
+            return null;
+        }
+
+        $pivot = $this->agencies()->where('agency_id', $agency->id)->first();
+        return $pivot?->pivot?->role;
+    }
+
+    /**
+     * Check if user is admin/manager in their current agency.
+     */
+    public function isManagerInCurrentAgency(): bool
+    {
+        $role = $this->roleInAgency($this->agency);
+        return in_array($role, ['admin', 'manager']);
     }
 
     public function brands(): BelongsToMany
@@ -84,12 +119,33 @@ class User extends Authenticatable
 
     public function hasBrandAccess(Brand $brand): bool
     {
-        // Admins and managers have access to all brands in their agency
-        if ($this->isManager()) {
-            return $this->agency_id === $brand->agency_id;
+        // Super admins have access to everything
+        if ($this->isSuperAdmin()) {
+            return true;
+        }
+
+        // Check if user belongs to the brand's agency
+        $agencyMembership = $this->agencies()->where('agency_id', $brand->agency_id)->first();
+
+        if (!$agencyMembership) {
+            return false;
+        }
+
+        // Admins and managers in that agency have access to all its brands
+        $roleInAgency = $agencyMembership->pivot->role;
+        if (in_array($roleInAgency, ['admin', 'manager'])) {
+            return true;
         }
 
         // Others need explicit brand assignment
         return $this->brands()->where('brands.id', $brand->id)->exists();
+    }
+
+    /**
+     * Check if user belongs to a specific agency.
+     */
+    public function belongsToAgency(Agency $agency): bool
+    {
+        return $this->agencies()->where('agency_id', $agency->id)->exists();
     }
 }

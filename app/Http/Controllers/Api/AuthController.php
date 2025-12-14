@@ -39,6 +39,9 @@ class AuthController extends Controller
             'role' => 'admin',
         ]);
 
+        // Add user to agency pivot table
+        $user->agencies()->attach($agency->id, ['role' => 'admin']);
+
         // Create the first brand for the agency
         $brand = Brand::create([
             'agency_id' => $agency->id,
@@ -106,7 +109,32 @@ class AuthController extends Controller
     public function user(Request $request): JsonResponse
     {
         return response()->json([
-            'user' => $request->user()->load('agency', 'brands'),
+            'user' => $request->user()->load('agency', 'brands', 'agencies'),
+        ]);
+    }
+
+    public function switchAgency(Request $request): JsonResponse
+    {
+        $request->validate([
+            'agency_id' => ['required', 'exists:agencies,id'],
+        ]);
+
+        $user = $request->user();
+        $agencyId = $request->agency_id;
+
+        // Check if user belongs to this agency
+        if (!$user->agencies()->where('agency_id', $agencyId)->exists()) {
+            return response()->json([
+                'message' => 'You do not have access to this workspace.',
+            ], 403);
+        }
+
+        // Update user's current agency
+        $user->update(['agency_id' => $agencyId]);
+
+        return response()->json([
+            'user' => $user->fresh()->load('agency', 'brands', 'agencies'),
+            'message' => 'Workspace switched successfully.',
         ]);
     }
 
@@ -133,6 +161,9 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
             'role' => $invitation->role,
         ]);
+
+        // Add user to agency pivot table
+        $user->agencies()->attach($invitation->agency_id, ['role' => $invitation->role]);
 
         // Mark invitation as accepted
         $invitation->update(['accepted_at' => now()]);

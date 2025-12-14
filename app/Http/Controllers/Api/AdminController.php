@@ -12,7 +12,6 @@ use App\Models\Post;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class AdminController extends Controller
 {
@@ -77,29 +76,6 @@ class AdminController extends Controller
         return response()->json($users);
     }
 
-    public function impersonate(Request $request, User $user)
-    {
-        $admin = $request->user();
-
-        // Log the impersonation
-        Log::info('Super admin impersonation started', [
-            'admin_id' => $admin->id,
-            'admin_email' => $admin->email,
-            'target_user_id' => $user->id,
-            'target_user_email' => $user->email,
-            'ip' => $request->ip(),
-        ]);
-
-        // Create a token for the target user
-        $token = $user->createToken('impersonation', ['impersonated'])->plainTextToken;
-
-        return response()->json([
-            'token' => $token,
-            'user' => $user->load(['agency', 'brands']),
-            'message' => "Now logged in as {$user->name}",
-        ]);
-    }
-
     public function updateAgencyQuota(Request $request, Agency $agency)
     {
         $request->validate([
@@ -113,6 +89,53 @@ class AdminController extends Controller
         return response()->json([
             'message' => 'Storage quota updated successfully.',
             'agency' => $agency->fresh(),
+        ]);
+    }
+
+    public function joinAgency(Request $request, Agency $agency)
+    {
+        $user = $request->user();
+
+        // Check if already a member
+        if ($user->agencies()->where('agency_id', $agency->id)->exists()) {
+            return response()->json([
+                'message' => 'You are already a member of this workspace.',
+            ], 422);
+        }
+
+        // Add user to the agency as admin
+        $user->agencies()->attach($agency->id, ['role' => 'admin']);
+
+        return response()->json([
+            'message' => "Joined {$agency->name} successfully.",
+            'user' => $user->fresh()->load('agency', 'agencies'),
+        ]);
+    }
+
+    public function leaveAgency(Request $request, Agency $agency)
+    {
+        $user = $request->user();
+
+        // Check if member
+        if (!$user->agencies()->where('agency_id', $agency->id)->exists()) {
+            return response()->json([
+                'message' => 'You are not a member of this workspace.',
+            ], 422);
+        }
+
+        // Don't allow leaving if it's the user's current agency
+        if ($user->agency_id === $agency->id) {
+            return response()->json([
+                'message' => 'Switch to a different workspace before leaving this one.',
+            ], 422);
+        }
+
+        // Remove from agency
+        $user->agencies()->detach($agency->id);
+
+        return response()->json([
+            'message' => "Left {$agency->name} successfully.",
+            'user' => $user->fresh()->load('agency', 'agencies'),
         ]);
     }
 

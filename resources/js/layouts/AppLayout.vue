@@ -13,6 +13,8 @@ const { isDark, toggle: toggleDarkMode } = useDarkMode();
 const sidebarOpen = ref(false);
 const userMenuOpen = ref(false);
 const brandMenuOpen = ref(false);
+const agencyMenuOpen = ref(false);
+const switchingAgency = ref(false);
 
 // Main navigation - brand-scoped content
 const mainNavigation = [
@@ -69,6 +71,28 @@ const toggleBrandMenu = () => {
 const selectBrand = (brand) => {
     brandStore.setActiveBrand(brand);
     brandMenuOpen.value = false;
+};
+
+const toggleAgencyMenu = () => {
+    agencyMenuOpen.value = !agencyMenuOpen.value;
+    userMenuOpen.value = false;
+    brandMenuOpen.value = false;
+};
+
+const selectAgency = async (agency) => {
+    if (agency.id === authStore.user?.agency_id) {
+        agencyMenuOpen.value = false;
+        return;
+    }
+    try {
+        switchingAgency.value = true;
+        await authStore.switchAgency(agency.id);
+        agencyMenuOpen.value = false;
+    } catch (err) {
+        console.error('Failed to switch workspace:', err);
+    } finally {
+        switchingAgency.value = false;
+    }
 };
 
 const logout = async () => {
@@ -327,6 +351,28 @@ const logout = async () => {
             <header class="hidden lg:flex fixed top-0 right-0 left-64 z-40 h-16 bg-white border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700">
                 <div class="flex flex-1 justify-end items-center px-4">
                     <div class="flex items-center gap-2">
+                        <!-- Workspace Switcher (only if multiple agencies) -->
+                        <button
+                            v-if="authStore.hasMultipleAgencies"
+                            @click="toggleAgencyMenu"
+                            :disabled="switchingAgency"
+                            class="flex items-center gap-2 px-3 py-1.5 rounded-full border border-purple-300 dark:border-purple-600 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors shadow-sm"
+                        >
+                            <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z" clip-rule="evenodd" />
+                            </svg>
+                            <span class="text-sm font-medium text-purple-700 dark:text-purple-300 max-w-32 truncate">
+                                {{ authStore.user?.agency?.name || 'Workspace' }}
+                            </span>
+                            <svg v-if="switchingAgency" class="w-4 h-4 text-purple-500 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <svg v-else class="w-4 h-4 text-purple-500 dark:text-purple-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+
                         <!-- Brand Switcher -->
                         <button
                             @click="toggleBrandMenu"
@@ -465,6 +511,54 @@ const logout = async () => {
                             Manage Brands
                         </RouterLink>
                     </div>
+                </div>
+            </div>
+        </Teleport>
+
+        <!-- Agency/Workspace menu dropdown -->
+        <Teleport to="body">
+            <div
+                v-if="agencyMenuOpen"
+                class="fixed inset-0 z-[60]"
+                @click="agencyMenuOpen = false"
+            >
+                <div
+                    @click.stop
+                    class="absolute left-4 right-4 top-14 lg:left-auto lg:right-4 lg:top-16 w-auto lg:w-72 bg-white rounded-lg shadow-lg dark:bg-gray-700 max-h-80 overflow-y-auto"
+                >
+                    <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-600">
+                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Switch Workspace</p>
+                    </div>
+                    <ul class="py-1">
+                        <li v-for="agency in authStore.agencies" :key="agency.id">
+                            <button
+                                @click="selectAgency(agency)"
+                                :disabled="switchingAgency"
+                                :class="[
+                                    'flex items-center gap-3 w-full px-4 py-2.5 text-left hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors disabled:opacity-50',
+                                    agency.id === authStore.user?.agency_id ? 'bg-purple-50 dark:bg-purple-900/20' : ''
+                                ]"
+                            >
+                                <div class="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z" clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ agency.name }}</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 capitalize">{{ agency.pivot?.role || 'member' }}</p>
+                                </div>
+                                <svg
+                                    v-if="agency.id === authStore.user?.agency_id"
+                                    class="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0"
+                                    fill="currentColor"
+                                    viewBox="0 0 20 20"
+                                >
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </li>
+                    </ul>
                 </div>
             </div>
         </Teleport>

@@ -44,6 +44,7 @@ export const authApi = {
     login: (data) => api.post('/login', data),
     logout: () => api.post('/logout'),
     user: () => api.get('/user'),
+    switchAgency: (agencyId) => api.post('/user/switch-agency', { agency_id: agencyId }),
     acceptInvitation: (token, data) => api.post(`/invitation/${token}/accept`, data),
 };
 
@@ -159,5 +160,6 @@ export const adminApi = {
     users: (params) => api.get('/admin/users', { params }),
     agencies: (params) => api.get('/admin/agencies', { params }),
     updateAgencyQuota: (agencyId, quota) => api.put(`/admin/agencies/${agencyId}/quota`, { storage_quota: quota }),
-    impersonate: (userId) => api.post(`/admin/impersonate/${userId}`),
+    joinAgency: (agencyId) => api.post(`/admin/agencies/${agencyId}/join`),
+    leaveAgency: (agencyId) => api.post(`/admin/agencies/${agencyId}/leave`),
 };
