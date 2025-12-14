@@ -148,6 +148,32 @@ class MediaController extends Controller
         ]);
     }
 
+    /**
+     * Stream media file for export (bypasses CORS issues)
+     */
+    public function stream(Request $request, Media $media)
+    {
+        $user = $request->user();
+
+        if (!$user->hasBrandAccess($media->brand)) {
+            return response()->json([
+                'message' => 'You do not have access to this media.',
+            ], 403);
+        }
+
+        $disk = Storage::disk($media->disk);
+
+        if (!$disk->exists($media->path)) {
+            return response()->json([
+                'message' => 'File not found.',
+            ], 404);
+        }
+
+        return response($disk->get($media->path))
+            ->header('Content-Type', $media->mime_type)
+            ->header('Cache-Control', 'public, max-age=3600');
+    }
+
     public function destroy(Request $request, Media $media): JsonResponse
     {
         $user = $request->user();
