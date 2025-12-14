@@ -2,15 +2,11 @@
 import { ref, onMounted, watch } from 'vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { adminApi } from '@/services/api';
-import { useAuthStore } from '@/stores/auth';
-
-const authStore = useAuthStore();
 
 const users = ref([]);
 const pagination = ref({});
 const loading = ref(true);
 const error = ref(null);
-const impersonating = ref(null);
 
 const sortBy = ref('posts_count');
 const sortDirection = ref('desc');
@@ -69,22 +65,6 @@ const handleSearch = () => {
 const goToPage = (page) => {
     currentPage.value = page;
     fetchUsers();
-};
-
-const impersonateUser = async (user) => {
-    if (!confirm(`Are you sure you want to login as ${user.name}? This will be logged.`)) {
-        return;
-    }
-
-    try {
-        impersonating.value = user.id;
-        await authStore.impersonate(user.id);
-    } catch (err) {
-        console.error('Impersonation failed:', err);
-        alert(err.response?.data?.message || 'Failed to impersonate user');
-    } finally {
-        impersonating.value = null;
-    }
 };
 
 const formatDate = (dateString) => {
@@ -220,9 +200,6 @@ onMounted(fetchUsers);
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                         Joined
                                     </th>
-                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                        Actions
-                                    </th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -261,23 +238,6 @@ onMounted(fetchUsers);
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                         {{ formatDate(user.created_at) }}
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button
-                                            v-if="user.id !== authStore.user?.id"
-                                            @click="impersonateUser(user)"
-                                            :disabled="impersonating === user.id"
-                                            class="inline-flex items-center gap-1 text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-300 disabled:opacity-50"
-                                        >
-                                            <svg v-if="impersonating === user.id" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
-                                            <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                                            </svg>
-                                            Login as
-                                        </button>
                                     </td>
                                 </tr>
                             </tbody>

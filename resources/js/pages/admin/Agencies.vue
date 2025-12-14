@@ -3,11 +3,16 @@ import { ref, onMounted, watch, computed } from 'vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import StorageIndicator from '@/components/StorageIndicator.vue';
 import { adminApi } from '@/services/api';
+import { useAuthStore } from '@/stores/auth';
+
+const authStore = useAuthStore();
 
 const agencies = ref([]);
 const pagination = ref({});
 const loading = ref(true);
 const error = ref(null);
+const joiningAgency = ref(null);
+const leavingAgency = ref(null);
 
 const sortBy = ref('storage_bytes');
 const sortDirection = ref('desc');
@@ -84,11 +89,50 @@ const sortOptions = [
 ];
 
 const formatBytes = (bytes) => {
-    if (!bytes || bytes === 0) return '0 B';
+    if (bytes === null || bytes === undefined || bytes === 0) return '0 B';
+    const numBytes = Number(bytes);
+    if (isNaN(numBytes) || numBytes === 0) return '0 B';
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    const i = Math.floor(Math.log(numBytes) / Math.log(k));
+    return parseFloat((numBytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+};
+
+const isMemberOf = (agencyId) => {
+    return authStore.agencies.some(a => a.id === agencyId);
+};
+
+const joinAgency = async (agency) => {
+    try {
+        joiningAgency.value = agency.id;
+        error.value = null;
+        const response = await adminApi.joinAgency(agency.id);
+        // Refresh user data to update agencies list
+        await authStore.fetchUser();
+    } catch (err) {
+        console.error('Failed to join agency:', err);
+        error.value = err.response?.data?.message || 'Failed to join workspace';
+    } finally {
+        joiningAgency.value = null;
+    }
+};
+
+const leaveAgency = async (agency) => {
+    if (!confirm(`Leave ${agency.name}? You will need to be re-added to access this workspace again.`)) {
+        return;
+    }
+    try {
+        leavingAgency.value = agency.id;
+        error.value = null;
+        const response = await adminApi.leaveAgency(agency.id);
+        // Refresh user data to update agencies list
+        await authStore.fetchUser();
+    } catch (err) {
+        console.error('Failed to leave agency:', err);
+        error.value = err.response?.data?.message || 'Failed to leave workspace';
+    } finally {
+        leavingAgency.value = null;
+    }
 };
 
 const fetchAgencies = async () => {
@@ -245,6 +289,40 @@ onMounted(fetchAgencies);
                                         <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ agency.name }}</h3>
                                         <p class="text-sm text-gray-500 dark:text-gray-400">Created {{ formatDate(agency.created_at) }}</p>
                                     </div>
+                                </div>
+                                <!-- Join/Leave buttons -->
+                                <div>
+                                    <button
+                                        v-if="isMemberOf(agency.id)"
+                                        @click="leaveAgency(agency)"
+                                        :disabled="leavingAgency === agency.id || agency.id === authStore.user?.agency_id"
+                                        class="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                                        :title="agency.id === authStore.user?.agency_id ? 'Switch workspace first' : 'Leave workspace'"
+                                    >
+                                        <svg v-if="leavingAgency === agency.id" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                        </svg>
+                                        <span class="hidden sm:inline">Leave</span>
+                                    </button>
+                                    <button
+                                        v-else
+                                        @click="joinAgency(agency)"
+                                        :disabled="joiningAgency === agency.id"
+                                        class="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg disabled:opacity-50"
+                                    >
+                                        <svg v-if="joiningAgency === agency.id" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                                        </svg>
+                                        <span class="hidden sm:inline">Join</span>
+                                    </button>
                                 </div>
                             </div>
 
