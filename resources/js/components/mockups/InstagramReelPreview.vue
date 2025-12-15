@@ -75,18 +75,20 @@
                 <span class="text-white text-xs mt-1 drop-shadow-md">48</span>
             </div>
             <div class="flex flex-col items-center">
-                <svg class="w-7 h-7 text-white drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                <svg class="w-7 h-7 text-white drop-shadow-md" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
                 </svg>
             </div>
             <div class="flex flex-col items-center">
-                <svg class="w-7 h-7 text-white drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
+                <svg class="w-7 h-7 text-white drop-shadow-md" fill="currentColor" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="1.5" />
+                    <circle cx="6" cy="12" r="1.5" />
+                    <circle cx="18" cy="12" r="1.5" />
                 </svg>
             </div>
             <div class="w-7 h-7 rounded-full border-2 border-white shadow-md">
                 <img v-if="brandLogoUrl" :src="brandLogoUrl" class="w-full h-full object-cover rounded-full" />
-                <div v-else class="w-full h-full bg-gradient-to-br from-purple-500 to-pink-500 rounded-full"></div>
+                <div v-else class="w-full h-full rounded-full" style="background: linear-gradient(to bottom right, #a855f7, #ec4899)"></div>
             </div>
         </div>
 
@@ -94,7 +96,7 @@
         <div class="absolute bottom-4 left-3 right-14">
             <div class="flex items-center mb-2">
                 <img v-if="brandLogoUrl" :src="brandLogoUrl" :alt="brandName" class="w-8 h-8 object-cover rounded-full" />
-                <div v-else class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
+                <div v-else class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold" style="background: linear-gradient(to bottom right, #a855f7, #ec4899)">
                     {{ brandInitial }}
                 </div>
                 <span class="ml-2 text-white text-sm font-medium">{{ brandName }}</span>
@@ -102,7 +104,9 @@
             </div>
             <p v-if="caption" class="text-white text-sm line-clamp-2">{{ caption }}</p>
             <div class="flex items-center mt-2">
-                <div class="w-4 h-4 rounded bg-white/20 mr-2"></div>
+                <svg class="w-4 h-4 text-white/80 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                </svg>
                 <span class="text-white/80 text-xs">Original audio</span>
             </div>
         </div>
