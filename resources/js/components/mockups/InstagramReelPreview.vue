@@ -1,6 +1,6 @@
 <template>
     <div
-        class="max-w-[280px] mx-auto rounded-2xl overflow-hidden aspect-[9/16] relative transition-colors duration-300"
+        class="w-[280px] mx-auto rounded-2xl overflow-hidden aspect-[9/16] relative transition-colors duration-300"
         :style="{ backgroundColor: backgroundColor || '#000' }"
     >
         <!-- Processing state -->
@@ -39,7 +39,7 @@
                     <svg class="mx-auto h-16 w-16 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                     </svg>
-                    <p class="mt-2 text-sm">No video selected</p>
+                    <p class="mt-2 text-sm">{{ placeholderText }}</p>
                 </div>
             </slot>
         </div>
@@ -146,6 +146,10 @@ const props = defineProps({
     backgroundColor: {
         type: String,
         default: null
+    },
+    placeholderText: {
+        type: String,
+        default: 'No video selected'
     }
 });
 

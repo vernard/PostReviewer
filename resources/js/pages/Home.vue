@@ -491,9 +491,9 @@ const exportAsJpeg = async () => {
 
                     <!-- Preview Section -->
                     <div class="w-[calc(100%+2rem)] -mx-4 sm:w-full sm:mx-0">
-                        <div class="bg-gray-100 dark:bg-gray-700 rounded-none sm:rounded-lg p-2 sm:p-4 flex items-center justify-center">
+                        <div class="bg-gray-100 dark:bg-gray-700 rounded-none sm:rounded-lg p-2 sm:p-4 flex items-center justify-center min-h-[580px]">
                             <!-- Mockup Container - scales down on very small screens -->
-                            <div ref="mockupRef" class="max-[400px]:scale-90">
+                            <div ref="mockupRef" class="max-[400px]:scale-90 origin-center">
                                 <!-- Instagram Feed -->
                                 <InstagramFeedPreview
                                     v-if="selectedPlatform === 'instagram_feed'"
@@ -504,6 +504,7 @@ const exportAsJpeg = async () => {
                                     :media-type="isVideo ? 'video' : 'image'"
                                     :caption="caption"
                                     :background-color="edgeColor"
+                                    placeholder-text="Upload image to preview"
                                 />
 
                                 <!-- Facebook Feed -->
@@ -516,6 +517,7 @@ const exportAsJpeg = async () => {
                                     :media-type="isVideo ? 'video' : 'image'"
                                     :caption="caption"
                                     :background-color="edgeColor"
+                                    placeholder-text="Upload image to preview"
                                 />
 
                                 <!-- Instagram Story -->
@@ -526,6 +528,7 @@ const exportAsJpeg = async () => {
                                     :media-url="previewUrl"
                                     :thumbnail-url="videoThumbnail"
                                     :media-type="isVideo ? 'video' : 'image'"
+                                    placeholder-text="Upload image to preview"
                                 />
 
                                 <!-- Instagram Reel -->
@@ -537,6 +540,7 @@ const exportAsJpeg = async () => {
                                     :thumbnail-url="videoThumbnail"
                                     :media-type="isVideo ? 'video' : 'image'"
                                     :caption="caption"
+                                    placeholder-text="Upload image to preview"
                                 />
 
                                 <!-- Facebook Reel -->
@@ -548,6 +552,7 @@ const exportAsJpeg = async () => {
                                     :thumbnail-url="videoThumbnail"
                                     :media-type="isVideo ? 'video' : 'image'"
                                     :caption="caption"
+                                    placeholder-text="Upload image to preview"
                                 />
 
                                 <!-- Facebook Story -->
@@ -558,6 +563,7 @@ const exportAsJpeg = async () => {
                                     :media-url="previewUrl"
                                     :thumbnail-url="videoThumbnail"
                                     :media-type="isVideo ? 'video' : 'image'"
+                                    placeholder-text="Upload image to preview"
                                 />
                             </div>
 

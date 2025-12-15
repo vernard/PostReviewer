@@ -1,11 +1,11 @@
 <template>
-    <div class="w-full max-w-[280px] mx-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+    <div class="w-[280px] mx-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
         <!-- Header -->
         <div class="flex items-center p-3">
             <div v-if="brandLogoUrl" class="w-8 h-8 rounded-full overflow-hidden">
                 <img :src="brandLogoUrl" :alt="brandName" class="w-full h-full object-cover" />
             </div>
-            <div v-else class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
+            <div v-else class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold" style="background: linear-gradient(to bottom right, #a855f7, #ec4899)">
                 {{ brandInitial }}
             </div>
             <div class="ml-3">
@@ -41,7 +41,7 @@
             <img
                 v-else-if="displayUrl"
                 :src="displayUrl"
-                class="w-full h-full object-cover"
+                class="w-full h-full object-contain"
             />
 
             <!-- Placeholder -->
@@ -51,7 +51,7 @@
                         <svg class="mx-auto h-12 w-12 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
-                        <p class="mt-2 text-sm">No image selected</p>
+                        <p class="mt-2 text-sm">{{ placeholderText }}</p>
                     </div>
                 </slot>
             </div>
@@ -83,6 +83,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
                 </svg>
             </div>
+            <p class="text-sm font-semibold text-gray-900 dark:text-white mb-1">1,234 likes</p>
             <p class="text-sm text-gray-900 dark:text-white">
                 <span class="font-semibold">{{ brandName }}</span>
                 <span class="whitespace-pre-wrap">{{ displayCaption }}</span>
@@ -142,6 +143,10 @@ const props = defineProps({
     captionLimit: {
         type: Number,
         default: 125
+    },
+    placeholderText: {
+        type: String,
+        default: 'No image selected'
     }
 });
 
